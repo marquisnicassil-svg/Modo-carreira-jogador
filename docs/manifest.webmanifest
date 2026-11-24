@@ -1,0 +1,18 @@
+{
+  "name": "Modo Carreira — Rastreador de Jogador",
+  "short_name": "Modo Carreira",
+  "description": "Acompanhe temporadas, gols, assistências, overall, títulos, ano prime e história automática do seu jogador no Modo Carreira.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#080D1A",
+  "theme_color": "#080D1A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
