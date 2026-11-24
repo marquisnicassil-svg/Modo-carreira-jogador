@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { BookOpen, Check, Copy, Crown, Trophy } from 'lucide-react';
 import { CareerProfile } from '../types/career';
 import { generateCareerStory } from '../utils/careerEngine';
+import { copyTextToClipboard } from '../utils/storage';
 
 interface StoryViewProps {
   career: CareerProfile;
@@ -14,12 +15,10 @@ export function StoryView({ career, onSelectSeasonYear }: StoryViewProps) {
   const story = generateCareerStory(career);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(story.fullText);
+    const ok = await copyTextToClipboard(story.fullText);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
-    } catch {
-      // Clipboard fallback ignored silently
     }
   };
 
@@ -71,11 +70,11 @@ export function StoryView({ career, onSelectSeasonYear }: StoryViewProps) {
             <motion.article
               key={chapter.seasonId}
               aria-labelledby={`chapter-title-${chapter.seasonId}`}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.24,
-                delay: Math.min(index * 0.04, 0.24),
+                duration: 0.18,
+                delay: Math.min(index * 0.025, 0.12),
                 ease: [0.22, 1, 0.36, 1],
               }}
               className={`rounded-2xl border p-5 sm:p-6 transition-colors ${

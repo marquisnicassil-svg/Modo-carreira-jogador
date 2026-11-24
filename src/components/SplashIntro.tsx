@@ -11,7 +11,7 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-    const duration = prefersReduced ? 200 : 760;
+    const duration = prefersReduced ? 120 : 480;
     const timer = window.setTimeout(onComplete, duration);
     return () => window.clearTimeout(timer);
   }, [onComplete]);
@@ -19,35 +19,29 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
   return (
     <motion.div
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.02 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
       onClick={onComplete}
       role="status"
       aria-live="polite"
       aria-label="Abrindo Modo Carreira, Rastreador de Jogador. Toque para pular."
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#080D1A] px-6 select-none cursor-pointer overflow-hidden"
     >
-      {/* Subtle Stadium Ambient Glow */}
-      <motion.div
+      {/* Lightweight Radial Ambient Glow (GPU-friendly, no heavy CSS blur filter) */}
+      <div
         aria-hidden="true"
-        initial={{ opacity: 0, scale: 0.75 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.32, ease: 'easeOut' }}
-        className="pointer-events-none absolute h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-blue-600/15 blur-3xl"
-      />
-      <motion.div
-        aria-hidden="true"
-        initial={{ opacity: 0, scale: 0.7 }}
-        animate={{ opacity: 0.8, scale: 1 }}
-        transition={{ duration: 0.38, delay: 0.05, ease: 'easeOut' }}
-        className="pointer-events-none absolute h-44 w-44 rounded-full bg-amber-500/10 blur-2xl translate-y-6"
+        className="pointer-events-none absolute h-80 w-80 sm:h-96 sm:w-96 rounded-full"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(37,99,235,0.22) 0%, rgba(245,158,11,0.08) 45%, rgba(8,13,26,0) 72%)',
+        }}
       />
 
       {/* Custom Animated Crest Icon */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.82, y: 8 }}
+        initial={{ opacity: 0, scale: 0.88, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         className="relative flex items-center justify-center"
       >
         <div className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-3xl border border-white/10 bg-[#11192D]/90 p-2.5 shadow-2xl overflow-hidden">
@@ -176,7 +170,7 @@ export function SplashIntro({ onComplete }: SplashIntroProps) {
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 0.62, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.4, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
           style={{ transformOrigin: 'left center' }}
           className="h-full w-full rounded-full bg-gradient-to-r from-blue-500 via-sky-400 to-amber-400"
         />

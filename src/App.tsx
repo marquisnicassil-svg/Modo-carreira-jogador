@@ -75,14 +75,14 @@ export default function App() {
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const duration = prefersReduced ? 80 : 400;
+    const duration = prefersReduced ? 60 : 260;
 
     setTransitionLoader(loader);
     window.setTimeout(() => {
       action();
       window.setTimeout(() => {
         setTransitionLoader(null);
-      }, 30);
+      }, 20);
     }, duration);
   };
 
@@ -547,6 +547,24 @@ export default function App() {
     setShowExitConfirmModal(false);
     allowExitRef.current = true;
 
+    const androidBridge = (
+      window as unknown as {
+        Android?: { exitApp?: () => void; closeApp?: () => void; finish?: () => void };
+      }
+    ).Android;
+    if (androidBridge?.exitApp) {
+      androidBridge.exitApp();
+      return;
+    }
+    if (androidBridge?.closeApp) {
+      androidBridge.closeApp();
+      return;
+    }
+    if (androidBridge?.finish) {
+      androidBridge.finish();
+      return;
+    }
+
     const capApp = (
       window as unknown as {
         Capacitor?: { Plugins?: { App?: { exitApp?: () => void } } };
@@ -611,8 +629,13 @@ export default function App() {
       ensureHistoryGuard();
     };
 
+    const onDeviceReady = () => {
+      document.addEventListener('backbutton', onCordovaBack, false);
+    };
+
     window.addEventListener('popstate', onPopState);
     document.addEventListener('backbutton', onCordovaBack, false);
+    document.addEventListener('deviceready', onDeviceReady, false);
     window.addEventListener('pointerdown', onFirstInteraction, { passive: true });
     window.addEventListener('keydown', onFirstInteraction, { passive: true });
 
@@ -648,20 +671,15 @@ export default function App() {
     return () => {
       window.removeEventListener('popstate', onPopState);
       document.removeEventListener('backbutton', onCordovaBack, false);
+      document.removeEventListener('deviceready', onDeviceReady, false);
       window.removeEventListener('pointerdown', onFirstInteraction);
       window.removeEventListener('keydown', onFirstInteraction);
       capListenerHandle?.remove?.();
     };
   }, []);
 
-  // Prevent pinch-to-zoom and gesture zoom across mobile browsers and WebViews
+  // Prevent Safari gesture zoom and desktop Ctrl+wheel zoom without blocking WebView touch scroll
   useEffect(() => {
-    const preventMultiTouch = (e: TouchEvent) => {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    };
-
     const preventGesture = (e: Event) => {
       e.preventDefault();
     };
@@ -672,16 +690,12 @@ export default function App() {
       }
     };
 
-    document.addEventListener('touchstart', preventMultiTouch, { passive: false });
-    document.addEventListener('touchmove', preventMultiTouch, { passive: false });
     document.addEventListener('gesturestart', preventGesture, { passive: false });
     document.addEventListener('gesturechange', preventGesture, { passive: false });
     document.addEventListener('gestureend', preventGesture, { passive: false });
     window.addEventListener('wheel', preventWheelZoom, { passive: false });
 
     return () => {
-      document.removeEventListener('touchstart', preventMultiTouch);
-      document.removeEventListener('touchmove', preventMultiTouch);
       document.removeEventListener('gesturestart', preventGesture);
       document.removeEventListener('gesturechange', preventGesture);
       document.removeEventListener('gestureend', preventGesture);
@@ -716,7 +730,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen bg-[#080D1A] text-slate-100 flex flex-col">
+      <div className="min-h-app bg-[#080D1A] text-slate-100 flex flex-col">
         {/* Live region for screen readers and voice synthesizers */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
           {srAnnouncement}
@@ -755,17 +769,17 @@ export default function App() {
           playerName={activeCareer ? activeCareer.playerName : 'Sem jogador'}
         />
 
-        {/* Main Content Container (padded at bottom on mobile for thumb nav bar) */}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-24 md:px-6 md:pt-6 md:pb-12 space-y-6">
+        {/* Main Content Container (padded at bottom on mobile for thumb nav bar + safe area) */}
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:px-6 md:pt-6 md:pb-12 space-y-6">
           <AnimatePresence>
             {bannerToast && (
               <motion.div
                 role="status"
                 aria-live="polite"
-                initial={{ opacity: 0, y: -10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
                 className="rounded-xl border border-blue-500/35 bg-blue-600/15 px-4 py-3 text-xs sm:text-sm font-medium text-blue-100"
               >
                 {bannerToast}
@@ -791,13 +805,13 @@ export default function App() {
             />
           )}
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={`${isOnHomeScreen ? 'home' : activeTab}-${activeCareer?.id || 'empty'}`}
-              initial={{ opacity: 0, y: 12, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
             >
             {isOnHomeScreen ? (
               <HomeDashboard

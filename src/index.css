@@ -10,12 +10,12 @@
 
   html {
     font-family: var(--font-sans);
-    scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     overscroll-behavior: none;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y;
+    background-color: #080d1a;
   }
 
   body {
@@ -23,10 +23,20 @@
     color: #f1f5f9;
     overflow-x: hidden;
     overscroll-behavior: none;
-    touch-action: manipulation;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    touch-action: manipulation;
   }
 
   input,
@@ -57,6 +67,17 @@
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.min-h-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Hide scrollbars cleanly for horizontal season scrollers */

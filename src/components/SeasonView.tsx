@@ -152,9 +152,9 @@ export function SeasonView({
   return (
     <motion.div
       key={season.id}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0.7 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-6"
     >
       {/* Historical Season Inspection Notice */}
@@ -582,11 +582,10 @@ export function SeasonView({
                   {season.trophies.map((trophy) => (
                     <motion.li
                       key={trophy.id}
-                      layout
-                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -18, scale: 0.96 }}
-                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -14 }}
+                      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
                       className="flex items-center justify-between gap-3 py-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">

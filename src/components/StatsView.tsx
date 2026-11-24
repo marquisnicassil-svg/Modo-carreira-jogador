@@ -79,11 +79,11 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
           {totalsList.map((item, idx) => (
             <motion.div
               key={item.label}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 0.22,
-                delay: idx * 0.035,
+                duration: 0.16,
+                delay: idx * 0.02,
                 ease: [0.22, 1, 0.36, 1],
               }}
               tabIndex={0}
@@ -103,11 +103,11 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
           ))}
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
-              duration: 0.22,
-              delay: totalsList.length * 0.035,
+              duration: 0.16,
+              delay: totalsList.length * 0.02,
               ease: [0.22, 1, 0.36, 1],
             }}
             tabIndex={0}
@@ -235,8 +235,8 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
                                 initial={{ scaleY: 0 }}
                                 animate={{ scaleY: 1 }}
                                 transition={{
-                                  duration: 0.38,
-                                  delay: Math.min(idx * 0.04, 0.25),
+                                  duration: 0.26,
+                                  delay: Math.min(idx * 0.025, 0.12),
                                   ease: [0.22, 1, 0.36, 1],
                                 }}
                                 style={{ height: `${gHeight}px`, transformOrigin: 'bottom' }}
@@ -251,8 +251,8 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
                                 initial={{ scaleY: 0 }}
                                 animate={{ scaleY: 1 }}
                                 transition={{
-                                  duration: 0.38,
-                                  delay: Math.min(idx * 0.04 + 0.04, 0.28),
+                                  duration: 0.26,
+                                  delay: Math.min(idx * 0.025 + 0.02, 0.14),
                                   ease: [0.22, 1, 0.36, 1],
                                 }}
                                 style={{ height: `${aHeight}px`, transformOrigin: 'bottom' }}
@@ -323,8 +323,8 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
                                 initial={{ scaleY: 0 }}
                                 animate={{ scaleY: 1 }}
                                 transition={{
-                                  duration: 0.38,
-                                  delay: Math.min(idx * 0.04, 0.25),
+                                  duration: 0.26,
+                                  delay: Math.min(idx * 0.025, 0.12),
                                   ease: [0.22, 1, 0.36, 1],
                                 }}
                                 style={{
@@ -342,8 +342,8 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
                                 initial={{ scaleY: 0 }}
                                 animate={{ scaleY: 1 }}
                                 transition={{
-                                  duration: 0.38,
-                                  delay: Math.min(idx * 0.04 + 0.04, 0.28),
+                                  duration: 0.26,
+                                  delay: Math.min(idx * 0.025 + 0.02, 0.14),
                                   ease: [0.22, 1, 0.36, 1],
                                 }}
                                 style={{ height: `${ratingHeight}px`, transformOrigin: 'bottom' }}
@@ -413,11 +413,11 @@ export function StatsView({ career, onSelectSeasonFromTimeline }: StatsViewProps
                 <li key={season.id}>
                   <motion.button
                     type="button"
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
-                      duration: 0.2,
-                      delay: Math.min(idx * 0.03, 0.2),
+                      duration: 0.16,
+                      delay: Math.min(idx * 0.02, 0.1),
                       ease: [0.22, 1, 0.36, 1],
                     }}
                     whileTap={{ scale: 0.985 }}

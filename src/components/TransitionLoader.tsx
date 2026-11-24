@@ -23,29 +23,30 @@ export function TransitionLoader({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.015 }}
-      transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
       role="status"
       aria-live="polite"
       aria-label={`${title}. ${subtitle}`}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#080D1A]/92 backdrop-blur-md px-6 select-none overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#080D1A]/96 px-6 select-none overflow-hidden gpu-layer"
     >
-      {/* Subtle Ambient Glow */}
-      <motion.div
+      {/* Lightweight Radial Ambient Glow */}
+      <div
         aria-hidden="true"
-        initial={{ opacity: 0, scale: 0.75 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className={`pointer-events-none absolute h-72 w-72 rounded-full blur-3xl ${
-          accentTone === 'amber' ? 'bg-amber-500/15' : 'bg-blue-600/20'
-        }`}
+        className="pointer-events-none absolute h-72 w-72 rounded-full"
+        style={{
+          background:
+            accentTone === 'amber'
+              ? 'radial-gradient(circle, rgba(245,158,11,0.2) 0%, rgba(8,13,26,0) 70%)'
+              : 'radial-gradient(circle, rgba(37,99,235,0.24) 0%, rgba(8,13,26,0) 70%)',
+        }}
       />
 
       {/* Animated Center Emblem / Player Avatar with Dual Orbital Spinner */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.88, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 460, damping: 24 }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         className="relative flex h-24 w-24 items-center justify-center"
       >
         {/* Outer rotating arc */}
@@ -110,7 +111,7 @@ export function TransitionLoader({
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           style={{ transformOrigin: 'left center' }}
           className={`h-full w-full rounded-full ${
             accentTone === 'amber'

@@ -168,17 +168,26 @@ export async function processPlayerPhotoFile(
   const fullCrop = renderCenterSquareCrop(img, 256);
   const base64 = createAnalysisBase64(img);
 
-  if (base64) {
+  const canCallApi =
+    typeof window !== 'undefined' &&
+    window.location.protocol !== 'file:' &&
+    (typeof navigator === 'undefined' || navigator.onLine !== false);
+
+  if (base64 && canCallApi) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 4000);
     try {
       const response = await fetch('./api/detect-face', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           imageBase64: base64,
           mimeType: 'image/jpeg',
           playerName,
         }),
       });
+      window.clearTimeout(timeoutId);
 
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
@@ -217,7 +226,8 @@ export async function processPlayerPhotoFile(
         };
       }
     } catch {
-      // Static hosting without backend (e.g. GitHub Pages): fall through to browser FaceDetector
+      window.clearTimeout(timeoutId);
+      // Static hosting or offline APK without backend: fall through to browser FaceDetector
     }
   }
 

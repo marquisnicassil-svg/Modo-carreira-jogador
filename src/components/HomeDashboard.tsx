@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
   ChevronRight,
+  ClipboardPaste,
+  Copy,
   Download,
   FolderKanban,
   Play,
@@ -12,7 +14,12 @@ import {
 } from 'lucide-react';
 import { CareerProfile } from '../types/career';
 import { getClubAccent, getClubMonogram } from '../utils/careerEngine';
-import { exportCareerJson, parseImportedCareers } from '../utils/storage';
+import {
+  buildCareerBackupJson,
+  copyTextToClipboard,
+  exportCareerJson,
+  parseImportedCareers,
+} from '../utils/storage';
 
 export type HomeScreenMode = 'menu' | 'players' | 'backup';
 
@@ -43,7 +50,14 @@ export function HomeDashboard({
     }
   };
   const [backupFeedback, setBackupFeedback] = useState<string | null>(null);
+  const [showPasteBox, setShowPasteBox] = useState(false);
+  const [pastedJson, setPastedJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showFeedback = (msg: string) => {
+    setBackupFeedback(msg);
+    window.setTimeout(() => setBackupFeedback((prev) => (prev === msg ? null : prev)), 3500);
+  };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,27 +67,60 @@ export function HomeDashboard({
       const text = typeof reader.result === 'string' ? reader.result : '';
       const parsed = parseImportedCareers(text);
       if (!parsed) {
-        setBackupFeedback('Arquivo JSON inválido ou incompatível.');
+        showFeedback('Arquivo JSON inválido ou incompatível.');
       } else {
         onImportCareers(parsed);
-        setBackupFeedback(`${parsed.length} carreira(s) importada(s) com sucesso.`);
+        showFeedback(`${parsed.length} carreira(s) importada(s) com sucesso.`);
       }
-      setTimeout(() => setBackupFeedback(null), 3500);
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
+  const handleExport = async () => {
+    const status = await exportCareerJson(careers);
+    if (status === 'shared') {
+      showFeedback('Backup pronto para salvar ou compartilhar.');
+    } else if (status === 'downloaded') {
+      showFeedback('Backup exportado em JSON.');
+    } else if (status === 'copied') {
+      showFeedback('Download bloqueado no aparelho; backup JSON copiado para a área de transferência.');
+    } else {
+      showFeedback('Use "Copiar JSON" abaixo para salvar seu backup.');
+    }
+  };
+
+  const handleCopyBackup = async () => {
+    const ok = await copyTextToClipboard(buildCareerBackupJson(careers));
+    showFeedback(
+      ok
+        ? 'Backup JSON copiado para a área de transferência.'
+        : 'Não foi possível copiar automaticamente neste dispositivo.'
+    );
+  };
+
+  const handlePasteImport = () => {
+    const parsed = parseImportedCareers(pastedJson);
+    if (!parsed) {
+      showFeedback('Texto JSON inválido ou incompatível.');
+      return;
+    }
+    onImportCareers(parsed);
+    setPastedJson('');
+    setShowPasteBox(false);
+    showFeedback(`${parsed.length} carreira(s) importada(s) com sucesso.`);
+  };
+
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       {mode === 'players' && careers.length > 0 ? (
         <motion.section
           key="home-players"
           aria-labelledby="home-players-heading"
-          initial={{ opacity: 0, y: 12, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.985 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="rounded-2xl border border-white/[0.08] bg-[#11192D] p-5 sm:p-8 max-w-xl mx-auto mt-4"
         >
           <div className="flex items-center gap-3">
@@ -170,10 +217,10 @@ export function HomeDashboard({
         <motion.section
           key="home-backup"
           aria-labelledby="home-backup-heading"
-          initial={{ opacity: 0, y: 12, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.985 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="rounded-2xl border border-white/[0.08] bg-[#11192D] p-5 sm:p-8 max-w-xl mx-auto mt-4"
         >
           <div className="flex items-center gap-3">
@@ -215,11 +262,7 @@ export function HomeDashboard({
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  exportCareerJson(careers);
-                  setBackupFeedback('Backup exportado em JSON.');
-                  setTimeout(() => setBackupFeedback(null), 3000);
-                }}
+                onClick={handleExport}
                 className="flex-1 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-500"
               >
                 <Download className="h-4 w-4" aria-hidden="true" />
@@ -238,27 +281,72 @@ export function HomeDashboard({
               }`}
             >
               <Upload className="h-4 w-4" aria-hidden="true" />
-              Importar JSON
+              Importar Arquivo
             </motion.button>
 
             <input
               ref={fileInputRef}
               type="file"
               aria-label="Selecionar arquivo JSON de backup para importar"
-              accept="application/json,.json"
+              accept=".json,application/json,text/plain,*/*"
               onChange={handleImportFile}
               className="hidden"
             />
           </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {careers.length > 0 && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={handleCopyBackup}
+                className="flex-1 min-w-[140px] inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09]"
+              >
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                Copiar JSON
+              </motion.button>
+            )}
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowPasteBox((v) => !v)}
+              className="flex-1 min-w-[140px] inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09]"
+            >
+              <ClipboardPaste className="h-3.5 w-3.5" aria-hidden="true" />
+              {showPasteBox ? 'Fechar Colagem' : 'Colar JSON'}
+            </motion.button>
+          </div>
+
+          {showPasteBox && (
+            <div className="mt-3 space-y-2.5 rounded-xl border border-white/10 bg-[#0B1222] p-3">
+              <textarea
+                rows={4}
+                value={pastedJson}
+                onChange={(e) => setPastedJson(e.target.value)}
+                aria-label="Cole o conteúdo JSON do backup"
+                placeholder="Cole aqui o texto JSON do backup..."
+                className="w-full rounded-lg border border-white/10 bg-[#11192D] p-2.5 text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none resize-none"
+              />
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                disabled={!pastedJson.trim()}
+                onClick={handlePasteImport}
+                className="w-full min-h-[42px] rounded-lg bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-40"
+              >
+                Restaurar Backup Colado
+              </motion.button>
+            </div>
+          )}
         </motion.section>
       ) : (
         <motion.section
           key="home-menu"
           aria-labelledby="home-menu-heading"
-          initial={{ opacity: 0, y: 12, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.985 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="rounded-2xl border border-white/[0.08] bg-[#11192D] p-8 sm:p-12 text-center max-w-2xl mx-auto mt-4"
         >
           <div

@@ -33,7 +33,7 @@ export function HeaderNav({
   return (
     <>
       {/* Desktop & Mobile Top Header (Compact 48px on mobile, 64px on desktop) */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#080D1A]/95 backdrop-blur-md pt-safe">
+      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#080D1A]/98 pt-safe gpu-layer">
         <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 md:h-16 md:gap-8 md:px-6">
           {/* Zone 1: Optional App Back Button + Brand Wordmark */}
           <div className="flex items-center gap-1.5 min-w-0 shrink-0">
@@ -81,7 +81,7 @@ export function HeaderNav({
                       {isActive && (
                         <motion.span
                           layoutId="desktop-nav-indicator"
-                          transition={{ type: 'spring', stiffness: 480, damping: 34 }}
+                          transition={{ type: 'spring', stiffness: 560, damping: 38, mass: 0.7 }}
                           aria-hidden="true"
                           className="absolute inset-x-2 -bottom-[13px] h-0.5 bg-blue-500 rounded-full"
                         />
@@ -122,7 +122,7 @@ export function HeaderNav({
       {!isHomeView && (
         <nav
           aria-label="Navegação móvel"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-[#0B1222]/95 backdrop-blur-md pb-safe"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-[#0B1222]/98 pb-safe gpu-layer"
         >
           <div className="grid grid-cols-4 h-14">
             {NAV_ITEMS.map((item) => {
@@ -142,7 +142,7 @@ export function HeaderNav({
                   {isActive && (
                     <motion.span
                       layoutId="mobile-nav-indicator"
-                      transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+                      transition={{ type: 'spring', stiffness: 560, damping: 38, mass: 0.7 }}
                       aria-hidden="true"
                       className="absolute top-0 inset-x-4 h-0.5 rounded-b-full bg-blue-500"
                     />

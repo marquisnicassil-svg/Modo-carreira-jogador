@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Check,
+  ClipboardPaste,
+  Copy,
   CopyPlus,
   Download,
   FolderKanban,
@@ -11,7 +13,12 @@ import {
 } from 'lucide-react';
 import { CareerProfile } from '../types/career';
 import { computeCareerSummary, getClubAccent, getClubMonogram } from '../utils/careerEngine';
-import { exportCareerJson, parseImportedCareers } from '../utils/storage';
+import {
+  buildCareerBackupJson,
+  copyTextToClipboard,
+  exportCareerJson,
+  parseImportedCareers,
+} from '../utils/storage';
 
 interface SavesViewProps {
   careers: CareerProfile[];
@@ -37,7 +44,14 @@ export function SavesView({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
+  const [showPasteBox, setShowPasteBox] = useState(false);
+  const [pastedJson, setPastedJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showFeedback = (msg: string) => {
+    setImportFeedback(msg);
+    window.setTimeout(() => setImportFeedback((prev) => (prev === msg ? null : prev)), 3500);
+  };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,15 +61,48 @@ export function SavesView({
       const text = typeof reader.result === 'string' ? reader.result : '';
       const parsed = parseImportedCareers(text);
       if (!parsed) {
-        setImportFeedback('Arquivo JSON inválido ou incompatível.');
+        showFeedback('Arquivo JSON inválido ou incompatível.');
       } else {
         onImportCareers(parsed);
-        setImportFeedback(`${parsed.length} carreira(s) importada(s) com sucesso.`);
+        showFeedback(`${parsed.length} carreira(s) importada(s) com sucesso.`);
       }
-      setTimeout(() => setImportFeedback(null), 3500);
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleExport = async () => {
+    const status = await exportCareerJson(careers);
+    if (status === 'shared') {
+      showFeedback('Backup pronto para salvar ou compartilhar.');
+    } else if (status === 'downloaded') {
+      showFeedback('Backup exportado em JSON.');
+    } else if (status === 'copied') {
+      showFeedback('Download indisponível no aparelho; backup JSON copiado.');
+    } else {
+      showFeedback('Use "Copiar JSON" para salvar seu backup.');
+    }
+  };
+
+  const handleCopyBackup = async () => {
+    const ok = await copyTextToClipboard(buildCareerBackupJson(careers));
+    showFeedback(
+      ok
+        ? 'Backup JSON copiado para a área de transferência.'
+        : 'Não foi possível copiar automaticamente neste dispositivo.'
+    );
+  };
+
+  const handlePasteImport = () => {
+    const parsed = parseImportedCareers(pastedJson);
+    if (!parsed) {
+      showFeedback('Texto JSON inválido ou incompatível.');
+      return;
+    }
+    onImportCareers(parsed);
+    setPastedJson('');
+    setShowPasteBox(false);
+    showFeedback(`${parsed.length} carreira(s) importada(s) com sucesso.`);
   };
 
   return (
@@ -76,15 +123,27 @@ export function SavesView({
 
         <div className="flex flex-wrap items-center gap-2">
           {careers.length > 0 && (
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.96 }}
-              onClick={() => exportCareerJson(careers)}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09] whitespace-nowrap"
-            >
-              <Download className="h-4 w-4 text-slate-300" aria-hidden="true" />
-              Exportar Backup
-            </motion.button>
+            <>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={handleExport}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09] whitespace-nowrap"
+              >
+                <Download className="h-4 w-4 text-slate-300" aria-hidden="true" />
+                Exportar Backup
+              </motion.button>
+
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.96 }}
+                onClick={handleCopyBackup}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09] whitespace-nowrap"
+              >
+                <Copy className="h-4 w-4 text-slate-300" aria-hidden="true" />
+                Copiar JSON
+              </motion.button>
+            </>
           )}
 
           <motion.button
@@ -97,11 +156,21 @@ export function SavesView({
             Importar JSON
           </motion.button>
 
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setShowPasteBox((v) => !v)}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09] whitespace-nowrap"
+          >
+            <ClipboardPaste className="h-4 w-4 text-slate-300" aria-hidden="true" />
+            {showPasteBox ? 'Fechar Colagem' : 'Colar JSON'}
+          </motion.button>
+
           <input
             ref={fileInputRef}
             type="file"
             aria-label="Selecionar arquivo JSON de backup para importar"
-            accept="application/json,.json"
+            accept=".json,application/json,text/plain,*/*"
             onChange={handleImportFile}
             className="hidden"
           />
@@ -164,6 +233,39 @@ export function SavesView({
         </div>
       )}
 
+      {showPasteBox && (
+        <div className="rounded-2xl border border-white/10 bg-[#11192D] p-4 space-y-3">
+          <p className="text-xs text-slate-300">
+            Cole o texto JSON do backup abaixo caso seu aparelho não abra o seletor de arquivos:
+          </p>
+          <textarea
+            rows={4}
+            value={pastedJson}
+            onChange={(e) => setPastedJson(e.target.value)}
+            aria-label="Cole o conteúdo JSON do backup"
+            placeholder="Cole aqui o texto JSON do backup..."
+            className="w-full rounded-xl border border-white/10 bg-[#0B1222] p-3 text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none resize-none"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPasteBox(false)}
+              className="min-h-[40px] rounded-xl border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-slate-300 hover:bg-white/[0.08]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!pastedJson.trim()}
+              onClick={handlePasteImport}
+              className="min-h-[40px] rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-40"
+            >
+              Restaurar Backup Colado
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Saved Careers Grid or Empty State */}
       {careers.length === 0 ? (
         <div className="rounded-2xl border border-white/[0.08] bg-[#11192D] p-8 text-center">
@@ -201,13 +303,12 @@ export function SavesView({
                 <motion.article
                   key={career.id}
                   role="listitem"
-                  layout
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
                   transition={{
-                    duration: 0.22,
-                    delay: Math.min(idx * 0.03, 0.18),
+                    duration: 0.16,
+                    delay: Math.min(idx * 0.02, 0.1),
                     ease: [0.22, 1, 0.36, 1],
                   }}
                   aria-label={`Carreira de ${career.playerName}, ${career.currentClub}, ${career.position}, ${career.currentAge} anos, temporada ${career.currentYear}, overall ${career.currentOverall}${isActive ? ', carreira ativa' : ''}`}

@@ -523,20 +523,20 @@ export function EndOfSeasonModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="end-season-title"
     >
       <motion.div
-        initial={{ opacity: 0, y: 28, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto pb-safe"
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[90dvh] overflow-y-auto overscroll-contain pb-safe gpu-layer"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
 
@@ -669,7 +669,6 @@ export function EndOfSeasonModal({
                 <input
                   id="transfer-club-input"
                   type="text"
-                  autoFocus
                   value={newClub}
                   onChange={(e) => setNewClub(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleConfirmTransfer()}
@@ -769,20 +768,20 @@ export function NewCareerModal({ onClose, onCreate }: NewCareerModalProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-career-title"
     >
       <motion.div
-        initial={{ opacity: 0, y: 28, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto pb-safe"
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[90dvh] overflow-y-auto overscroll-contain pb-safe gpu-layer"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
 
@@ -818,7 +817,6 @@ export function NewCareerModal({ onClose, onCreate }: NewCareerModalProps) {
               id="nc-name"
               type="text"
               required
-              autoFocus
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Ex: Nome do jogador..."
@@ -953,20 +951,20 @@ export function EditPlayerModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-player-title"
     >
       <motion.div
-        initial={{ opacity: 0, y: 28, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto pb-safe"
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[90dvh] overflow-y-auto overscroll-contain pb-safe gpu-layer"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
 
@@ -1112,8 +1110,8 @@ export function ExitAppModal({ onCancel, onConfirmExit }: ExitAppModalProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4"
+      transition={{ duration: 0.16, ease: 'easeOut' }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="exit-app-title"
@@ -1121,12 +1119,12 @@ export function ExitAppModal({ onCancel, onConfirmExit }: ExitAppModalProps) {
       onClick={onCancel}
     >
       <motion.div
-        initial={{ opacity: 0, y: 28, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl pb-safe"
+        className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl pb-safe gpu-layer"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
 
