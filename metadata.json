@@ -1,0 +1,8 @@
+{
+  "name": "Remix WebClone Pro",
+  "description": "Quickly recreate and deploy responsive web applications directly to GitHub Pages with our streamlined development tool.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
