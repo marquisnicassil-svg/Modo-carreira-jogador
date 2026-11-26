@@ -4,10 +4,12 @@ import {
   Check,
   Eye,
   Palette,
+  Play,
   RotateCcw,
   Settings,
   Sliders,
   Sparkles,
+  Volume2,
   X,
 } from 'lucide-react';
 import {
@@ -24,6 +26,7 @@ interface SettingsModalProps {
   settings: AppSettings;
   onChange: (next: AppSettings) => void;
   onClose: () => void;
+  onReplaySplash?: () => void;
 }
 
 const THEME_OPTIONS: {
@@ -75,7 +78,12 @@ const ACCENT_OPTIONS: {
   { id: 'rose', label: 'Rubro', swatch: '#E11D48' },
 ];
 
-export function SettingsModal({ settings, onChange, onClose }: SettingsModalProps) {
+export function SettingsModal({
+  settings,
+  onChange,
+  onClose,
+  onReplaySplash,
+}: SettingsModalProps) {
   const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     onChange({ ...settings, [key]: value });
   };
@@ -89,6 +97,7 @@ export function SettingsModal({ settings, onChange, onClose }: SettingsModalProp
     settings.showPulseBar === DEFAULT_APP_SETTINGS.showPulseBar &&
     settings.showPrimeBadge === DEFAULT_APP_SETTINGS.showPrimeBadge &&
     settings.showSplashIntro === DEFAULT_APP_SETTINGS.showSplashIntro &&
+    settings.splashSound === DEFAULT_APP_SETTINGS.splashSound &&
     settings.reduceAnimations === DEFAULT_APP_SETTINGS.reduceAnimations;
 
   return (
@@ -387,9 +396,16 @@ export function SettingsModal({ settings, onChange, onClose }: SettingsModalProp
             <div className="space-y-2">
               <SettingToggleRow
                 label="Tela de abertura ao iniciar"
-                description="Exibe a apresentação rápida antes do menu inicial"
+                description="Exibe a apresentação do estádio antes do menu inicial"
                 checked={settings.showSplashIntro}
                 onToggle={() => update('showSplashIntro', !settings.showSplashIntro)}
+              />
+              <SettingToggleRow
+                label="Som da torcida na abertura"
+                description="Reproduz o rugido da torcida junto com a animação inicial"
+                checked={settings.splashSound}
+                onToggle={() => update('splashSound', !settings.splashSound)}
+                icon={<Volume2 className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />}
               />
               <SettingToggleRow
                 label="Reduzir animações"
@@ -398,6 +414,17 @@ export function SettingsModal({ settings, onChange, onClose }: SettingsModalProp
                 onToggle={() => update('reduceAnimations', !settings.reduceAnimations)}
                 icon={<Sparkles className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />}
               />
+
+              {onReplaySplash && (
+                <button
+                  type="button"
+                  onClick={onReplaySplash}
+                  className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0B1222] px-3.5 text-xs font-semibold text-blue-400 transition-colors hover:bg-white/[0.06] hover:text-white"
+                >
+                  <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Rever animação de abertura com torcida</span>
+                </button>
+              )}
             </div>
           </section>
         </div>

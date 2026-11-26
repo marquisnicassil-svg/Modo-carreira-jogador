@@ -789,7 +789,13 @@ export default function App() {
         </div>
 
         <AnimatePresence>
-          {showSplash && <SplashIntro onComplete={() => setShowSplash(false)} />}
+          {showSplash && (
+            <SplashIntro
+              onComplete={() => setShowSplash(false)}
+              soundEnabled={appSettings.splashSound}
+              reducedMotion={appSettings.reduceAnimations}
+            />
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -978,6 +984,10 @@ export default function App() {
             settings={appSettings}
             onChange={(next) => setAppSettings(next)}
             onClose={() => setShowSettingsModal(false)}
+            onReplaySplash={() => {
+              setShowSettingsModal(false);
+              setShowSplash(true);
+            }}
           />
         )}
       </AnimatePresence>

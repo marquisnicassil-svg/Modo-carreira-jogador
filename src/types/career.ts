@@ -79,6 +79,7 @@ export interface AppSettings {
   showPulseBar: boolean;
   showPrimeBadge: boolean;
   showSplashIntro: boolean;
+  splashSound: boolean;
   reduceAnimations: boolean;
 }
 
@@ -91,6 +92,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   showPulseBar: true,
   showPrimeBadge: true,
   showSplashIntro: true,
+  splashSound: true,
   reduceAnimations: false,
 };
 
