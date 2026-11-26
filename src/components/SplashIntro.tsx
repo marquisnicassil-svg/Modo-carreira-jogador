@@ -18,12 +18,26 @@ export function SplashIntro({
   const [needsAudioTap, setNeedsAudioTap] = useState(false);
   const audioRef = useRef<StadiumCheerController | null>(null);
   const completedRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
 
-  const finishIntro = () => {
+  const finishIntro = (explicitSkip = false) => {
     if (completedRef.current) return;
     completedRef.current = true;
-    audioRef.current?.stop();
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (explicitSkip) {
+      audioRef.current?.stop();
+    }
     onComplete();
+  };
+
+  const scheduleFinish = (delayMs: number) => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+    }
+    timerRef.current = window.setTimeout(() => finishIntro(false), delayMs);
   };
 
   useEffect(() => {
@@ -31,7 +45,7 @@ export function SplashIntro({
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const isReduced = reducedMotion || osReduced;
-    const totalDuration = isReduced ? 550 : 3000;
+    const totalDuration = isReduced ? 550 : 3100;
 
     if (soundEnabled) {
       const controller = startStadiumCheer(isReduced ? 1.2 : 2.9);
@@ -44,39 +58,35 @@ export function SplashIntro({
       }
     }
 
-    const unlockOnFirstInteraction = () => {
-      if (!audioRef.current) return;
-      void audioRef.current.unlockAndPlay().then((ok) => {
-        if (ok) {
-          setAudioUnlocked(true);
-          setNeedsAudioTap(false);
-        }
-      });
-    };
-
-    window.addEventListener('pointerdown', unlockOnFirstInteraction, { once: true, passive: true });
-    window.addEventListener('keydown', unlockOnFirstInteraction, { once: true, passive: true });
-
-    const timer = window.setTimeout(finishIntro, totalDuration);
+    scheduleFinish(totalDuration);
 
     return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('pointerdown', unlockOnFirstInteraction);
-      window.removeEventListener('keydown', unlockOnFirstInteraction);
-      audioRef.current?.stop();
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
     };
   }, [soundEnabled, reducedMotion]);
 
-  const handleUnlockAudioClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUnlockAudio = () => {
+    if (!soundEnabled || audioUnlocked) return;
     if (!audioRef.current) {
       audioRef.current = startStadiumCheer(2.9);
     }
-    const ok = await audioRef.current.unlockAndPlay();
-    if (ok) {
-      setAudioUnlocked(true);
-      setNeedsAudioTap(false);
+    void audioRef.current.unlockAndPlay().then((ok) => {
+      if (ok) {
+        setAudioUnlocked(true);
+        setNeedsAudioTap(false);
+        scheduleFinish(2800);
+      }
+    });
+  };
+
+  const handleBackdropTap = () => {
+    if (soundEnabled && needsAudioTap && !audioUnlocked) {
+      handleUnlockAudio();
+      return;
     }
+    finishIntro(true);
   };
 
   return (
@@ -84,10 +94,10 @@ export function SplashIntro({
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.02 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      onClick={finishIntro}
+      onClick={handleBackdropTap}
       role="status"
       aria-live="polite"
-      aria-label="Abrindo Modo Carreira, Rastreador de Jogador. Toque para pular."
+      aria-label="Abrindo Modo Carreira, Rastreador de Jogador. Toque para ativar o som ou pular."
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#080D1A] px-6 select-none cursor-pointer overflow-hidden"
     >
       {/* Top Stadium Floodlight Beams */}
@@ -309,28 +319,38 @@ export function SplashIntro({
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
           {soundEnabled && needsAudioTap && !audioUnlocked && (
             <button
               type="button"
-              onClick={handleUnlockAudioClick}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl border border-blue-500/35 bg-blue-600/20 px-3 py-1.5 text-xs font-semibold text-blue-200 transition-colors hover:bg-blue-600/30"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUnlockAudio();
+              }}
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-600/25 px-3.5 py-2 text-xs font-semibold text-blue-100 transition-colors hover:bg-blue-600/35"
             >
-              <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Ativar som da torcida</span>
+              <Volume2 className="h-4 w-4" aria-hidden="true" />
+              <span>Tocar para ouvir o estádio</span>
             </button>
           )}
 
           {soundEnabled && audioUnlocked && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300">
               <Volume2 className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
-              <span>Torcida no estádio</span>
+              <span>Estádio ativo</span>
             </span>
           )}
 
-          <span className="text-[11px] font-medium text-slate-500">
-            Toque para pular
-          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              finishIntro(true);
+            }}
+            className="inline-flex min-h-[40px] items-center rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-white/[0.1] hover:text-white"
+          >
+            Pular
+          </button>
         </div>
       </motion.div>
     </motion.div>

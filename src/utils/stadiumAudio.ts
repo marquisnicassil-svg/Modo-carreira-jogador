@@ -293,17 +293,17 @@ export function startStadiumCheer(durationSec = 2.9): StadiumCheerController {
   const unlockAndPlay = async (): Promise<boolean> => {
     if (isStopped) return false;
     try {
+      // Schedule nodes synchronously inside the user gesture (required by iOS Safari & Chrome)
+      if (!hasPlayed) {
+        triggerGraph();
+      }
       if (ctx.state === 'suspended') {
         await ctx.resume();
       }
-      if (ctx.state === 'running') {
-        triggerGraph();
-        return true;
-      }
+      return ctx.state === 'running' || hasPlayed;
     } catch {
-      // Ignore Web Audio autoplay rejection
+      return false;
     }
-    return false;
   };
 
   let started = false;
