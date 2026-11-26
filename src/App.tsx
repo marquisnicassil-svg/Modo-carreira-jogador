@@ -20,9 +20,16 @@ import {
   ExitAppModal,
   NewCareerModal,
 } from './components/Modals';
-import { ActiveTab, CareerProfile, SeasonRecord } from './types/career';
+import { CompareCareersModal } from './components/CompareCareersModal';
+import { SettingsModal } from './components/SettingsModal';
+import { ActiveTab, AppSettings, CareerProfile, SeasonRecord } from './types/career';
 import { createId, getPrimeSeasonId } from './utils/careerEngine';
-import { loadWorkspace, saveWorkspace } from './utils/storage';
+import {
+  loadAppSettings,
+  loadWorkspace,
+  saveAppSettings,
+  saveWorkspace,
+} from './utils/storage';
 
 interface NavEntry {
   isHome: boolean;
@@ -34,9 +41,11 @@ interface NavEntry {
 
 export default function App() {
   const initial = useMemo(() => loadWorkspace(), []);
+  const initialSettings = useMemo(() => loadAppSettings(), []);
   const [careers, setCareers] = useState<CareerProfile[]>(initial.careers);
   const [activeCareerId, setActiveCareerId] = useState<string | null>(initial.activeCareerId);
   const [activeTab, setActiveTab] = useState<ActiveTab>('carreira');
+  const [appSettings, setAppSettings] = useState<AppSettings>(initialSettings);
 
   const activeCareer = useMemo(
     () =>
@@ -52,10 +61,12 @@ export default function App() {
   const [showEndSeasonModal, setShowEndSeasonModal] = useState(false);
   const [showNewCareerModal, setShowNewCareerModal] = useState(false);
   const [showEditPlayerModal, setShowEditPlayerModal] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [bannerToast, setBannerToast] = useState<string | null>(null);
   const [srAnnouncement, setSrAnnouncement] = useState('');
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(initialSettings.showSplashIntro);
   const [showHomeDashboard, setShowHomeDashboard] = useState(true);
   const [homeMode, setHomeMode] = useState<HomeScreenMode>('menu');
   const [navHistory, setNavHistory] = useState<NavEntry[]>([]);
@@ -73,9 +84,13 @@ export default function App() {
     action: () => void
   ) => {
     const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const duration = prefersReduced ? 60 : 260;
+      appSettings.reduceAnimations ||
+      (typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+    if (prefersReduced) {
+      action();
+      return;
+    }
 
     setTransitionLoader(loader);
     window.setTimeout(() => {
@@ -83,12 +98,25 @@ export default function App() {
       window.setTimeout(() => {
         setTransitionLoader(null);
       }, 20);
-    }, duration);
+    }, 260);
   };
 
   useEffect(() => {
     saveWorkspace(careers, activeCareerId);
   }, [careers, activeCareerId]);
+
+  useEffect(() => {
+    saveAppSettings(appSettings);
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      const isLight = appSettings.themeStyle === 'light';
+      root.dataset.appTheme = appSettings.themeStyle;
+      root.dataset.appAccent = appSettings.accentColor;
+      root.dataset.appDensity = appSettings.density;
+      root.classList.toggle('dark', !isLight);
+      root.style.colorScheme = isLight ? 'light' : 'dark';
+    }
+  }, [appSettings]);
 
   const showToast = (msg: string) => {
     setBannerToast(msg);
@@ -187,6 +215,8 @@ export default function App() {
             goals: 0,
             assists: 0,
             games: 0,
+            yellowCards: 0,
+            redCards: 0,
             rating: 0,
             startOverall: closingSeason.endOverall,
             endOverall: closingSeason.endOverall,
@@ -255,6 +285,8 @@ export default function App() {
           goals: 0,
           assists: 0,
           games: 0,
+          yellowCards: 0,
+          redCards: 0,
           rating: 0,
           startOverall: data.overall,
           endOverall: data.overall,
@@ -329,6 +361,7 @@ export default function App() {
   const handleSelectCareer = (id: string) => {
     const target = careers.find((c) => c.id === id);
     if (!target) return;
+    const nextTab = appSettings.defaultTab;
     runWithTransition(
       {
         title: 'Carregando Perfil',
@@ -340,13 +373,13 @@ export default function App() {
       () => {
         pushCurrentToHistory({
           isHome: false,
-          tab: 'carreira',
+          tab: nextTab,
           careerId: target.id,
           year: target.currentYear,
         });
         setActiveCareerId(target.id);
         setSelectedYear(target.currentYear);
-        setActiveTab('carreira');
+        setActiveTab(nextTab);
         setShowHomeDashboard(false);
         setHomeMode('menu');
         showToast(`Carreira de ${target.playerName} carregada.`);
@@ -481,6 +514,14 @@ export default function App() {
     }
     if (showExitConfirmModal) {
       setShowExitConfirmModal(false);
+      return;
+    }
+    if (showSettingsModal) {
+      setShowSettingsModal(false);
+      return;
+    }
+    if (showCompareModal) {
+      setShowCompareModal(false);
       return;
     }
     if (showEditPlayerModal) {
@@ -709,6 +750,10 @@ export default function App() {
       if (e.key !== 'Escape') return;
       if (showExitConfirmModal) {
         setShowExitConfirmModal(false);
+      } else if (showSettingsModal) {
+        setShowSettingsModal(false);
+      } else if (showCompareModal) {
+        setShowCompareModal(false);
       } else if (showEditPlayerModal) {
         setShowEditPlayerModal(false);
       } else if (showNewCareerModal) {
@@ -719,7 +764,14 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showExitConfirmModal, showEditPlayerModal, showNewCareerModal, showEndSeasonModal]);
+  }, [
+    showExitConfirmModal,
+    showSettingsModal,
+    showCompareModal,
+    showEditPlayerModal,
+    showNewCareerModal,
+    showEndSeasonModal,
+  ]);
 
   const tabLabels: Record<ActiveTab, string> = {
     carreira: 'Carreira',
@@ -729,7 +781,7 @@ export default function App() {
   };
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={appSettings.reduceAnimations ? 'always' : 'user'}>
       <div className="min-h-app bg-[#080D1A] text-slate-100 flex flex-col">
         {/* Live region for screen readers and voice synthesizers */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
@@ -753,6 +805,7 @@ export default function App() {
             announce(`Aba ${tabLabels[tab]} aberta`);
           }}
           onOpenNewCareer={() => setShowNewCareerModal(true)}
+          onOpenSettings={() => setShowSettingsModal(true)}
           onGoHome={() => {
             pushCurrentToHistory({ isHome: true, homeMode: 'menu', tab: 'carreira' });
             setShowHomeDashboard(true);
@@ -770,7 +823,7 @@ export default function App() {
         />
 
         {/* Main Content Container (padded at bottom on mobile for thumb nav bar + safe area) */}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:px-6 md:pt-6 md:pb-12 space-y-6">
+        <main className="mc-main-container mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:px-6 md:pt-6 md:pb-12 space-y-6">
           <AnimatePresence>
             {bannerToast && (
               <motion.div
@@ -792,6 +845,8 @@ export default function App() {
               career={activeCareer}
               selectedSeason={selectedSeason}
               primeSeasonId={primeSeasonId}
+              bannerStyle={appSettings.bannerStyle}
+              showPrimeBadge={appSettings.showPrimeBadge}
               onSelectSeasonYear={(yr) => {
                 if (activeTab !== 'carreira') {
                   pushCurrentToHistory({ isHome: false, tab: 'carreira', year: yr });
@@ -820,6 +875,7 @@ export default function App() {
                 onModeChange={handleHomeModeChange}
                 onContinueCareer={handleSelectCareer}
                 onOpenNewCareer={() => setShowNewCareerModal(true)}
+                onCompareCareers={() => setShowCompareModal(true)}
                 onImportCareers={handleImportCareers}
               />
             ) : activeTab === 'saves' ? (
@@ -847,6 +903,7 @@ export default function App() {
                       announce(`Temporada ${activeCareer.currentYear} selecionada`);
                     }}
                     onAnnounce={announce}
+                    showPulseBar={appSettings.showPulseBar}
                   />
                 )}
 
@@ -901,6 +958,26 @@ export default function App() {
               setShowEditPlayerModal(false);
               handleDeleteCareer(activeCareer.id);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCompareModal && careers.length >= 2 && (
+          <CompareCareersModal
+            careers={careers}
+            initialLeftId={activeCareerId}
+            onClose={() => setShowCompareModal(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSettingsModal && (
+          <SettingsModal
+            settings={appSettings}
+            onChange={(next) => setAppSettings(next)}
+            onClose={() => setShowSettingsModal(false)}
           />
         )}
       </AnimatePresence>

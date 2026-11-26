@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Shield,
+  Shuffle,
   Sparkles,
   Trash2,
   User,
@@ -22,12 +23,54 @@ import {
   CareerProfile,
   PLAYER_POSITIONS,
   POPULAR_CLUBS,
+  PositionSector,
   SeasonRecord,
 } from '../types/career';
-import { FOOTBALL_COUNTRIES } from '../utils/countries';
-import { formatRating, getUnlockedSeasonAchievements } from '../utils/careerEngine';
+import {
+  COUNTRY_REGIONS,
+  CountryRegion,
+  FOOTBALL_COUNTRIES,
+} from '../utils/countries';
+import {
+  formatRating,
+  getClubAccent,
+  getClubMonogram,
+  getUnlockedSeasonAchievements,
+} from '../utils/careerEngine';
 import { processPlayerPhotoFile } from '../utils/imageHelper';
 import { CountryFlag } from './CountryFlag';
+
+const SECTOR_META: Record<
+  PositionSector,
+  { label: string; badgeBg: string; text: string; activeBorder: string }
+> = {
+  ataque: {
+    label: 'Ataque',
+    badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35',
+    text: 'text-emerald-300',
+    activeBorder: 'border-emerald-500/60 bg-emerald-500/15',
+  },
+  meio: {
+    label: 'Meio-Campo',
+    badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/35',
+    text: 'text-sky-300',
+    activeBorder: 'border-sky-500/60 bg-sky-500/15',
+  },
+  defesa: {
+    label: 'Defesa',
+    badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/35',
+    text: 'text-amber-300',
+    activeBorder: 'border-amber-500/60 bg-amber-500/15',
+  },
+  gol: {
+    label: 'Goleiro',
+    badgeBg: 'bg-violet-500/20 text-violet-300 border-violet-500/35',
+    text: 'text-violet-300',
+    activeBorder: 'border-violet-500/60 bg-violet-500/15',
+  },
+};
+
+const SECTOR_ORDER: PositionSector[] = ['ataque', 'meio', 'defesa', 'gol'];
 
 function PositionPicker({
   value,
@@ -37,95 +80,191 @@ function PositionPicker({
   onChange: (pos: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [sectorFilter, setSectorFilter] = useState<'all' | PositionSector>('all');
 
   useEffect(() => {
     if (!open) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
         setOpen(false);
       }
     };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('keydown', handleKey);
+    window.addEventListener('keydown', handleKey, true);
     return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('keydown', handleKey);
+      window.removeEventListener('keydown', handleKey, true);
     };
   }, [open]);
 
   const current = PLAYER_POSITIONS.find((p) => p.code === value);
+  const currentSector = current ? SECTOR_META[current.sector] : SECTOR_META.ataque;
+  const visibleSectors =
+    sectorFilter === 'all' ? SECTOR_ORDER : SECTOR_ORDER.filter((s) => s === sectorFilter);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div>
       <span id="position-picker-label" className="block text-xs font-semibold text-slate-300 mb-1.5">
         Posição
       </span>
 
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setSectorFilter('all');
+          setOpen(true);
+        }}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-labelledby="position-picker-label"
         aria-label={`Posição selecionada: ${value}${current ? `, ${current.label}` : ''}. Toque para alterar`}
         className="w-full min-h-[44px] flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-[#0B1222] px-3 py-2 text-left text-sm text-white transition-colors hover:border-white/25 focus:border-blue-500 focus:outline-none"
       >
-        <span className="truncate">
-          <span className="font-semibold">{value}</span>
-          {current ? (
-            <span className="text-slate-400"> · {current.label}</span>
-          ) : null}
+        <span className="flex items-center gap-2 min-w-0">
+          <span
+            className={`inline-flex items-center justify-center rounded-md border px-1.5 py-0.5 font-mono-num text-[11px] font-bold shrink-0 ${currentSector.badgeBg}`}
+          >
+            {value}
+          </span>
+          {current && <span className="truncate text-xs text-slate-300">{current.label}</span>}
         </span>
-        <ChevronDown
-          className={`h-4 w-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
-          }`}
-          aria-hidden="true"
-        />
+        <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            role="listbox"
-            aria-label="Selecionar posição"
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-0 right-0 sm:right-auto sm:w-64 z-30 mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/15 bg-[#0B1222] p-1.5 shadow-2xl space-y-0.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+            }}
+            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="position-sheet-title"
           >
-            {PLAYER_POSITIONS.map((pos) => {
-              const selected = pos.code === value;
-              return (
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl border border-white/15 bg-[#11192D] p-5 shadow-2xl max-h-[85dvh] flex flex-col pb-safe gpu-layer"
+            >
+              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
+
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3
+                    id="position-sheet-title"
+                    className="font-display text-xl font-extrabold text-white uppercase"
+                  >
+                    Escolher Posição
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Organizadas por setor em campo
+                  </p>
+                </div>
                 <button
-                  key={pos.code}
                   type="button"
-                  role="option"
-                  aria-selected={selected}
-                  aria-label={`${pos.code}, ${pos.label}`}
-                  onClick={() => {
-                    onChange(pos.code);
-                    setOpen(false);
-                  }}
-                  className={`w-full min-h-[38px] flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
-                    selected
-                      ? 'bg-blue-600 text-white font-semibold'
-                      : 'text-slate-200 hover:bg-white/[0.06]'
+                  onClick={() => setOpen(false)}
+                  aria-label="Fechar seleção de posição"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              {/* Tactical Sector Tabs */}
+              <div
+                role="group"
+                aria-label="Filtrar posições por setor"
+                className="mt-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSectorFilter('all')}
+                  aria-pressed={sectorFilter === 'all'}
+                  className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                    sectorFilter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-white/10 bg-[#0B1222] text-slate-300 hover:bg-white/[0.08]'
                   }`}
                 >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono-num font-bold w-9 shrink-0">{pos.code}</span>
-                    <span className="truncate text-slate-300">{pos.label}</span>
-                  </span>
-                  {selected && <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                  Todas (15)
                 </button>
-              );
-            })}
+                {SECTOR_ORDER.map((sec) => {
+                  const active = sectorFilter === sec;
+                  return (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setSectorFilter(sec)}
+                      aria-pressed={active}
+                      className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                        active
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-white/10 bg-[#0B1222] text-slate-300 hover:bg-white/[0.08]'
+                      }`}
+                    >
+                      {SECTOR_META[sec].label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Grouped Position Grid */}
+              <div className="mt-3 flex-1 overflow-y-auto overscroll-contain space-y-4 pr-0.5">
+                {visibleSectors.map((sec) => {
+                  const meta = SECTOR_META[sec];
+                  const items = PLAYER_POSITIONS.filter((p) => p.sector === sec);
+                  return (
+                    <div key={sec}>
+                      <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${meta.text}`}>
+                        {meta.label}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2" role="listbox" aria-label={`Posições de ${meta.label}`}>
+                        {items.map((pos) => {
+                          const selected = pos.code === value;
+                          return (
+                            <button
+                              key={pos.code}
+                              type="button"
+                              role="option"
+                              aria-selected={selected}
+                              onClick={() => {
+                                onChange(pos.code);
+                                setOpen(false);
+                              }}
+                              className={`min-h-[48px] flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
+                                selected
+                                  ? `${meta.activeBorder} text-white`
+                                  : 'border-white/10 bg-[#0B1222] text-slate-200 hover:border-white/25 hover:bg-[#141F38]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`inline-flex items-center justify-center rounded-md border px-1.5 py-0.5 font-mono-num text-xs font-bold shrink-0 ${meta.badgeBg}`}
+                                >
+                                  {pos.code}
+                                </span>
+                                <span className="text-xs font-medium truncate">{pos.label}</span>
+                              </div>
+                              {selected && (
+                                <Check className="h-4 w-4 text-white shrink-0" aria-hidden="true" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -134,7 +273,7 @@ function PositionPicker({
 }
 
 /* =========================================================
-   REUSABLE COUNTRY FLAG DROPDOWN PICKER
+   REUSABLE COUNTRY FLAG PICKER SHEET (REGIONS + SEARCH)
    ========================================================= */
 interface CountryFlagPickerProps {
   value: string;
@@ -144,36 +283,44 @@ interface CountryFlagPickerProps {
 function CountryFlagPicker({ value, onChange }: CountryFlagPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [regionFilter, setRegionFilter] = useState<'all' | CountryRegion>('all');
 
   useEffect(() => {
     if (!open) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
         setOpen(false);
       }
     };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handleOutside);
-    document.addEventListener('keydown', handleKey);
+    window.addEventListener('keydown', handleKey, true);
     return () => {
-      document.removeEventListener('mousedown', handleOutside);
-      document.removeEventListener('keydown', handleKey);
+      window.removeEventListener('keydown', handleKey, true);
     };
   }, [open]);
 
   const filteredCountries = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return FOOTBALL_COUNTRIES;
-    return FOOTBALL_COUNTRIES.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
-    );
+    return FOOTBALL_COUNTRIES.filter((c) => {
+      const matchesRegion = regionFilter === 'all' || c.region === regionFilter;
+      if (!matchesRegion) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        c.region.toLowerCase().includes(q)
+      );
+    });
+  }, [query, regionFilter]);
+
+  const exactMatchExists = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return FOOTBALL_COUNTRIES.some((c) => c.name.toLowerCase() === q);
   }, [query]);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div>
       <span id="country-picker-label" className="block text-xs font-semibold text-slate-300 mb-1.5">
         Nacionalidade
       </span>
@@ -182,88 +329,180 @@ function CountryFlagPicker({ value, onChange }: CountryFlagPickerProps) {
         type="button"
         onClick={() => {
           setQuery('');
-          setOpen((v) => !v);
+          setRegionFilter('all');
+          setOpen(true);
         }}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-labelledby="country-picker-label"
         aria-label={`Nacionalidade selecionada: ${value}. Toque para alterar`}
         className="w-full min-h-[44px] flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-[#0B1222] px-3 py-2 text-left text-sm text-white transition-colors hover:border-white/25 focus:border-blue-500 focus:outline-none"
       >
         <span className="flex items-center gap-2 min-w-0">
           <CountryFlag country={value} size="sm" />
-          <span className="truncate">{value}</span>
+          <span className="truncate text-xs sm:text-sm font-medium">{value}</span>
         </span>
-        <ChevronDown
-          className={`h-4 w-4 text-slate-400 shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
-          }`}
-          aria-hidden="true"
-        />
+        <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute right-0 left-0 sm:left-auto sm:w-72 z-30 mt-2 rounded-xl border border-white/15 bg-[#0B1222] p-2.5 shadow-2xl space-y-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+            }}
+            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="country-sheet-title"
           >
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500"
-                aria-hidden="true"
-              />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Buscar país"
-                placeholder="Buscar país..."
-                className="w-full min-h-[36px] rounded-lg border border-white/10 bg-[#11192D] pl-8 pr-2.5 text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-              />
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/15 bg-[#11192D] p-5 shadow-2xl max-h-[86dvh] flex flex-col pb-safe gpu-layer"
+            >
+              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
 
-            <div role="listbox" aria-label="Países" className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto pr-0.5">
-              {filteredCountries.map((country) => {
-                const selected = value.toLowerCase() === country.name.toLowerCase();
-                return (
-                  <button
-                    key={country.code}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => {
-                      onChange(country.name);
-                      setOpen(false);
-                    }}
-                    className={`min-h-[38px] flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
-                      selected
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : 'text-slate-200 hover:bg-white/[0.06]'
-                    }`}
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3
+                    id="country-sheet-title"
+                    className="font-display text-xl font-extrabold text-white uppercase"
                   >
-                    <CountryFlag country={country.name} size="sm" />
-                    <span className="truncate flex-1">{country.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    Selecionar País
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Busque por nome ou filtre por continente
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Fechar seleção de país"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
 
-            {query.trim() && filteredCountries.length === 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(query.trim());
-                  setOpen(false);
-                }}
-                className="w-full min-h-[36px] rounded-lg bg-blue-600/20 border border-blue-500/30 px-2.5 text-xs font-semibold text-blue-300 hover:bg-blue-600/30"
+              {/* Search */}
+              <div className="relative mt-3">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500"
+                  aria-hidden="true"
+                />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Buscar país"
+                  placeholder="Buscar país (ex: Brasil, França, Japão...)"
+                  className="w-full min-h-[44px] rounded-xl border border-white/15 bg-[#0B1222] pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Region Filter Tabs */}
+              <div
+                role="group"
+                aria-label="Filtrar países por região"
+                className="mt-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1"
               >
-                Usar &ldquo;{query.trim()}&rdquo;
-              </button>
-            )}
+                <button
+                  type="button"
+                  onClick={() => setRegionFilter('all')}
+                  aria-pressed={regionFilter === 'all'}
+                  className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                    regionFilter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'border border-white/10 bg-[#0B1222] text-slate-300 hover:bg-white/[0.08]'
+                  }`}
+                >
+                  Todos ({FOOTBALL_COUNTRIES.length})
+                </button>
+                {COUNTRY_REGIONS.map((region) => {
+                  const active = regionFilter === region;
+                  return (
+                    <button
+                      key={region}
+                      type="button"
+                      onClick={() => setRegionFilter(region)}
+                      aria-pressed={active}
+                      className={`min-h-[36px] rounded-lg px-3 text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+                        active
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-white/10 bg-[#0B1222] text-slate-300 hover:bg-white/[0.08]'
+                      }`}
+                    >
+                      {region}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Countries Grid */}
+              <div
+                role="listbox"
+                aria-label="Lista de países"
+                className="mt-3 flex-1 overflow-y-auto overscroll-contain grid grid-cols-1 sm:grid-cols-2 gap-2 pr-0.5 content-start"
+              >
+                {filteredCountries.map((country) => {
+                  const selected = value.toLowerCase() === country.name.toLowerCase();
+                  return (
+                    <button
+                      key={country.code}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => {
+                        onChange(country.name);
+                        setOpen(false);
+                      }}
+                      className={`min-h-[48px] flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors ${
+                        selected
+                          ? 'border-blue-500/60 bg-blue-600/20 text-white'
+                          : 'border-white/10 bg-[#0B1222] text-slate-200 hover:border-white/25 hover:bg-[#141F38]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <CountryFlag country={country.name} size="md" />
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-semibold truncate">
+                            {country.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            {country.region}
+                          </div>
+                        </div>
+                      </div>
+                      {selected && (
+                        <Check className="h-4 w-4 text-blue-300 shrink-0" aria-hidden="true" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {query.trim() && !exactMatchExists && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(query.trim());
+                    setOpen(false);
+                  }}
+                  className="mt-3 w-full min-h-[44px] rounded-xl bg-blue-600/20 border border-blue-500/40 px-3 text-xs font-bold text-blue-200 hover:bg-blue-600/30"
+                >
+                  Usar país personalizado: &ldquo;{query.trim()}&rdquo;
+                </button>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -589,6 +828,22 @@ export function EndOfSeasonModal({
           </div>
         </div>
 
+        {((season.yellowCards || 0) > 0 || (season.redCards || 0) > 0) && (
+          <div className="mt-2.5 flex items-center justify-center gap-4 text-xs text-slate-300 tabular-nums">
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden="true" className="inline-block h-3 w-2 rounded-[2px] bg-amber-400" />
+              {season.yellowCards || 0}{' '}
+              {(season.yellowCards || 0) === 1 ? 'cartão amarelo' : 'cartões amarelos'}
+            </span>
+            <span aria-hidden="true" className="text-slate-600">·</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden="true" className="inline-block h-3 w-2 rounded-[2px] bg-rose-500" />
+              {season.redCards || 0}{' '}
+              {(season.redCards || 0) === 1 ? 'cartão vermelho' : 'cartões vermelhos'}
+            </span>
+          </div>
+        )}
+
         {achievements.length > 0 && (
           <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-300">
@@ -722,7 +977,7 @@ export function EndOfSeasonModal({
 }
 
 /* =========================================================
-   2. NEW CAREER MODAL (Original layout + Photo + Flag Picker + Stepper/Slider)
+   2. NEW CAREER MODAL (Live Preview + Pre-filled Data + Archetypes)
    ========================================================= */
 interface NewCareerModalProps {
   onClose: () => void;
@@ -738,15 +993,57 @@ interface NewCareerModalProps {
   }) => void;
 }
 
+const STARTER_PROFILES = [
+  { playerName: 'Rafael Silva', position: 'ATA', nationality: 'Brasil', club: 'Palmeiras', age: 18, overall: 76 },
+  { playerName: 'Mateo Navarro', position: 'MEI', nationality: 'Argentina', club: 'Real Madrid', age: 19, overall: 79 },
+  { playerName: 'Lucas Martins', position: 'PD', nationality: 'Brasil', club: 'Flamengo', age: 17, overall: 74 },
+  { playerName: 'João Mendes', position: 'MC', nationality: 'Portugal', club: 'Milan', age: 20, overall: 80 },
+  { playerName: 'Hugo Moreau', position: 'PE', nationality: 'França', club: 'PSG', age: 19, overall: 78 },
+  { playerName: 'Liam Walker', position: 'VOL', nationality: 'Inglaterra', club: 'Arsenal', age: 21, overall: 81 },
+  { playerName: 'Marco Bellini', position: 'ZAG', nationality: 'Itália', club: 'Inter de Milão', age: 20, overall: 79 },
+  { playerName: 'Carlos Rivera', position: 'SA', nationality: 'Espanha', club: 'Barcelona', age: 18, overall: 77 },
+];
+
+const CAREER_ARCHETYPES = [
+  { id: 'promessa', label: 'Promessa', subtitle: '17 anos · OVR 72', age: 17, overall: 72 },
+  { id: 'titular', label: 'Titular', subtitle: '20 anos · OVR 80', age: 20, overall: 80 },
+  { id: 'craque', label: 'Craque', subtitle: '25 anos · OVR 87', age: 25, overall: 87 },
+];
+
+const QUICK_STARTER_CLUBS = POPULAR_CLUBS.slice(0, 8);
+
 export function NewCareerModal({ onClose, onCreate }: NewCareerModalProps) {
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(STARTER_PROFILES[0].playerName);
   const [playerPhoto, setPlayerPhoto] = useState<string | undefined>(undefined);
-  const [position, setPosition] = useState('ATA');
-  const [nationality, setNationality] = useState('Brasil');
-  const [club, setClub] = useState('');
+  const [position, setPosition] = useState(STARTER_PROFILES[0].position);
+  const [nationality, setNationality] = useState(STARTER_PROFILES[0].nationality);
+  const [club, setClub] = useState(STARTER_PROFILES[0].club);
   const [year, setYear] = useState(2026);
-  const [age, setAge] = useState(18);
-  const [overall, setOverall] = useState(76);
+  const [age, setAge] = useState(STARTER_PROFILES[0].age);
+  const [overall, setOverall] = useState(STARTER_PROFILES[0].overall);
+  const [presetIndex, setPresetIndex] = useState(0);
+
+  const previewAccent = getClubAccent(club || 'Clube');
+  const previewMonogram = getClubMonogram(club || 'CLB');
+
+  const handleRandomize = () => {
+    const nextIdx = (presetIndex + 1 + Math.floor(Math.random() * (STARTER_PROFILES.length - 1))) % STARTER_PROFILES.length;
+    const picked = STARTER_PROFILES[nextIdx];
+    setPresetIndex(nextIdx);
+    setPlayerName(picked.playerName);
+    setPosition(picked.position);
+    setNationality(picked.nationality);
+    setClub(picked.club);
+    setAge(picked.age);
+    setOverall(picked.overall);
+    setYear(2026);
+  };
+
+  const handleClearTextFields = () => {
+    setPlayerName('');
+    setClub('');
+    setPlayerPhoto(undefined);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -781,112 +1078,272 @@ export function NewCareerModal({ onClose, onCreate }: NewCareerModalProps) {
         exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[90dvh] overflow-y-auto overscroll-contain pb-safe gpu-layer"
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl border border-white/10 bg-[#11192D] p-5 sm:p-6 shadow-2xl max-h-[92dvh] overflow-y-auto overscroll-contain pb-safe gpu-layer"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
 
-        <div className="flex items-center justify-between">
-          <h2
-            id="new-career-title"
-            className="font-display text-2xl font-extrabold text-white uppercase"
-          >
-            Nova Carreira
-          </h2>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2
+              id="new-career-title"
+              className="font-display text-2xl font-extrabold text-white uppercase leading-none"
+            >
+              Criar Carreira
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Personalize ou inicie direto com os dados já preenchidos
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fechar"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white"
+            aria-label="Fechar janela de criar carreira"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:bg-white/10 hover:text-white shrink-0"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
-          <PhotoPickerField
-            photo={playerPhoto}
-            playerName={playerName}
-            onChange={setPlayerPhoto}
-          />
+        {/* Live Player Card Preview */}
+        <div
+          aria-label={`Prévia do jogador: ${playerName || 'Novo Jogador'}, ${position}, ${club || 'Sem clube'}, Overall ${overall}`}
+          style={{ borderTopColor: previewAccent.ring }}
+          className="mt-4 rounded-2xl border border-white/[0.08] border-t-2 bg-[#0B1222] p-3.5"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {playerPhoto ? (
+                <div
+                  aria-hidden="true"
+                  className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border-2 bg-[#11192D]"
+                  style={{ borderColor: previewAccent.ring }}
+                >
+                  <img
+                    src={playerPhoto}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 font-display text-base font-extrabold"
+                  style={{
+                    backgroundColor: previewAccent.bg,
+                    borderColor: previewAccent.ring,
+                    color: previewAccent.text,
+                  }}
+                >
+                  {previewMonogram}
+                </div>
+              )}
 
-          <div>
-            <label htmlFor="nc-name" className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Nome do Jogador
-            </label>
-            <input
-              id="nc-name"
-              type="text"
-              required
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Ex: Nome do jogador..."
-              className="w-full min-h-[44px] rounded-xl border border-white/15 bg-[#0B1222] px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-            />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-xl font-extrabold text-white uppercase truncate">
+                    {playerName.trim() || 'Nome do Jogador'}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-200 truncate">
+                    {club.trim() || 'Clube Inicial'}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{position}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <CountryFlag country={nationality} size="sm" />
+                    <span>{nationality}</span>
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span className="tabular-nums">{age}a</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="tabular-nums">{year}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0 pl-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                OVR
+              </div>
+              <div className="font-display text-3xl font-extrabold leading-none text-amber-400 tabular-nums">
+                {overall}
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <PositionPicker value={position} onChange={setPosition} />
+          <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center justify-between gap-2">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={handleRandomize}
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-600/15 px-3 text-xs font-semibold text-blue-200 transition-colors hover:bg-blue-600/25"
+            >
+              <Shuffle className="h-3.5 w-3.5" aria-hidden="true" />
+              Sortear Jogador
+            </motion.button>
 
-            <CountryFlagPicker value={nationality} onChange={setNationality} />
+            <button
+              type="button"
+              onClick={handleClearTextFields}
+              className="min-h-[36px] rounded-lg px-2.5 text-xs font-medium text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+            >
+              Limpar nome e clube
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {/* Bloco 1: Identidade */}
+          <div className="space-y-3">
+            <PhotoPickerField
+              photo={playerPhoto}
+              playerName={playerName}
+              onChange={setPlayerPhoto}
+            />
+
+            <div>
+              <label htmlFor="nc-name" className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Nome do Jogador
+              </label>
+              <input
+                id="nc-name"
+                type="text"
+                required
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Ex: Rafael Silva..."
+                className="w-full min-h-[44px] rounded-xl border border-white/15 bg-[#0B1222] px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <PositionPicker value={position} onChange={setPosition} />
+
+              <CountryFlagPicker value={nationality} onChange={setNationality} />
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="nc-club" className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Clube Inicial
-            </label>
-            <input
-              id="nc-club"
-              type="text"
-              required
-              value={club}
-              onChange={(e) => setClub(e.target.value)}
-              placeholder="Ex: Palmeiras, Real Madrid, Arsenal..."
-              className="w-full min-h-[44px] rounded-xl border border-white/15 bg-[#0B1222] px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
-            />
-          </div>
+          {/* Bloco 2: Clube & Estreia */}
+          <div className="space-y-3 pt-2 border-t border-white/[0.08]">
+            <div>
+              <label htmlFor="nc-club" className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Clube Inicial
+              </label>
+              <input
+                id="nc-club"
+                type="text"
+                required
+                value={club}
+                onChange={(e) => setClub(e.target.value)}
+                placeholder="Ex: Palmeiras, Real Madrid, Arsenal..."
+                className="w-full min-h-[44px] rounded-xl border border-white/15 bg-[#0B1222] px-3.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
+              />
+              <div
+                className="mt-2 flex flex-wrap gap-1.5"
+                role="group"
+                aria-label="Sugestões de clubes iniciais"
+              >
+                {QUICK_STARTER_CLUBS.map((item) => {
+                  const selected = club.trim().toLowerCase() === item.toLowerCase();
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setClub(item)}
+                      className={`min-h-[32px] rounded-lg px-2.5 text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'border border-white/10 bg-[#0B1222] text-slate-300 hover:bg-white/[0.08]'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-          {/* Stepper + Slider Bars */}
-          <div className="space-y-2.5 pt-1">
-            <StepperSlider
-              id="nc-year"
-              label="Ano Inicial"
-              value={year}
-              min={1990}
-              max={2050}
-              onChange={setYear}
-            />
+            {/* Modelos de Início */}
+            <div>
+              <span className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Perfil de Início Rápido
+              </span>
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Perfil de início rápido">
+                {CAREER_ARCHETYPES.map((arch) => {
+                  const active = age === arch.age && overall === arch.overall;
+                  return (
+                    <button
+                      key={arch.id}
+                      type="button"
+                      onClick={() => {
+                        setAge(arch.age);
+                        setOverall(arch.overall);
+                      }}
+                      aria-pressed={active}
+                      className={`min-h-[48px] rounded-xl border px-2 py-2 text-center transition-colors ${
+                        active
+                          ? 'border-blue-500/60 bg-blue-600/20 text-white'
+                          : 'border-white/10 bg-[#0B1222] text-slate-300 hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{arch.label}</div>
+                      <div className="text-[10px] text-slate-400 tabular-nums mt-0.5">
+                        {arch.subtitle}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-            <StepperSlider
-              id="nc-age"
-              label="Idade"
-              value={age}
-              min={15}
-              max={45}
-              onChange={setAge}
-            />
+            {/* Stepper + Slider Bars */}
+            <div className="space-y-2.5">
+              <StepperSlider
+                id="nc-year"
+                label="Ano Inicial"
+                value={year}
+                min={1990}
+                max={2050}
+                onChange={setYear}
+              />
 
-            <StepperSlider
-              id="nc-ovr"
-              label="Over Inicial (OVR)"
-              value={overall}
-              min={40}
-              max={99}
-              accentClass="text-amber-400"
-              onChange={setOverall}
-            />
+              <StepperSlider
+                id="nc-age"
+                label="Idade"
+                value={age}
+                min={15}
+                max={45}
+                onChange={setAge}
+              />
+
+              <StepperSlider
+                id="nc-ovr"
+                label="Over Inicial (OVR)"
+                value={overall}
+                min={40}
+                max={99}
+                accentClass="text-amber-400"
+                onChange={setOverall}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[44px] rounded-xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-slate-300 hover:bg-white/[0.09]"
+              className="min-h-[48px] rounded-xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-slate-300 hover:bg-white/[0.09]"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="min-h-[44px] rounded-xl bg-blue-600 text-xs font-bold text-white hover:bg-blue-500"
+              disabled={!playerName.trim() || !club.trim()}
+              className="min-h-[48px] rounded-xl bg-blue-600 text-xs font-bold text-white transition-colors hover:bg-blue-500 disabled:opacity-40"
             >
               Iniciar Carreira
             </button>

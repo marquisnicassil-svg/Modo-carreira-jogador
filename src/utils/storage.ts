@@ -1,11 +1,45 @@
-import { CareerProfile } from '../types/career';
+import { AppSettings, CareerProfile, DEFAULT_APP_SETTINGS } from '../types/career';
 
 const STORAGE_KEY = 'modo_carreira_saves_v1';
 const ACTIVE_ID_KEY = 'modo_carreira_active_id_v1';
+const SETTINGS_KEY = 'modo_carreira_settings_v1';
 
 export interface StoredWorkspace {
   careers: CareerProfile[];
   activeCareerId: string | null;
+}
+
+export function loadAppSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AppSettings>;
+      if (parsed && typeof parsed === 'object') {
+        const validTheme =
+          parsed.themeStyle === 'midnight' ||
+          parsed.themeStyle === 'amoled' ||
+          parsed.themeStyle === 'light'
+            ? parsed.themeStyle
+            : DEFAULT_APP_SETTINGS.themeStyle;
+        return {
+          ...DEFAULT_APP_SETTINGS,
+          ...parsed,
+          themeStyle: validTheme,
+        };
+      }
+    }
+  } catch {
+    // Fallback cleanly to defaults
+  }
+  return { ...DEFAULT_APP_SETTINGS };
+}
+
+export function saveAppSettings(settings: AppSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage quota issues safely
+  }
 }
 
 export function loadWorkspace(): StoredWorkspace {

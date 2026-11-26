@@ -331,6 +331,104 @@ export function CountryFlag({ country, size = 'md' }: CountryFlagProps) {
             <rect x="11" y="9" width="14" height="2.5" rx="1" fill="#FFFFFF" />
           </svg>
         );
+      case 'RS':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="36" height="8" y="0" fill="#C6363C" />
+            <rect width="36" height="8" y="8" fill="#0C4076" />
+            <rect width="36" height="8" y="16" fill="#FFFFFF" />
+            <rect x="9" y="7" width="5" height="8" rx="1" fill="#FFFFFF" stroke="#C6363C" strokeWidth="0.8" />
+          </svg>
+        );
+      case 'GR':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="36" height="24" fill="#0D5EAF" />
+            <rect width="36" height="3" y="3" fill="#FFFFFF" />
+            <rect width="36" height="3" y="9" fill="#FFFFFF" />
+            <rect width="36" height="3" y="15" fill="#FFFFFF" />
+            <rect width="36" height="3" y="21" fill="#FFFFFF" />
+            <rect width="14" height="12" fill="#0D5EAF" />
+            <rect x="5.5" y="0" width="3" height="12" fill="#FFFFFF" />
+            <rect x="0" y="4.5" width="14" height="3" fill="#FFFFFF" />
+          </svg>
+        );
+      case 'IE':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="12" height="24" x="0" fill="#169B62" />
+            <rect width="12" height="24" x="12" fill="#FFFFFF" />
+            <rect width="12" height="24" x="24" fill="#FF883E" />
+          </svg>
+        );
+      case 'GB-SCT':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="36" height="24" fill="#005EB8" />
+            <line x1="0" y1="0" x2="36" y2="24" stroke="#FFFFFF" strokeWidth="4" />
+            <line x1="36" y1="0" x2="0" y2="24" stroke="#FFFFFF" strokeWidth="4" />
+          </svg>
+        );
+      case 'CR':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="36" height="4" y="0" fill="#002B7F" />
+            <rect width="36" height="4" y="4" fill="#FFFFFF" />
+            <rect width="36" height="8" y="8" fill="#CE1126" />
+            <rect width="36" height="4" y="16" fill="#FFFFFF" />
+            <rect width="36" height="4" y="20" fill="#002B7F" />
+          </svg>
+        );
+      case 'CI':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="12" height="24" x="0" fill="#F77F00" />
+            <rect width="12" height="24" x="12" fill="#FFFFFF" />
+            <rect width="12" height="24" x="24" fill="#009E60" />
+          </svg>
+        );
+      case 'CM':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="12" height="24" x="0" fill="#007A5E" />
+            <rect width="12" height="24" x="12" fill="#CE1126" />
+            <rect width="12" height="24" x="24" fill="#FCD116" />
+            <circle cx="18" cy="12" r="2.2" fill="#FCD116" />
+          </svg>
+        );
+      case 'GH':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="36" height="8" y="0" fill="#CF0921" />
+            <rect width="36" height="8" y="8" fill="#FCD20F" />
+            <rect width="36" height="8" y="16" fill="#006B3F" />
+            <circle cx="18" cy="12" r="2.3" fill="#111111" />
+          </svg>
+        );
+      case 'DZ':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="18" height="24" x="0" fill="#006233" />
+            <rect width="18" height="24" x="18" fill="#FFFFFF" />
+            <circle cx="18" cy="12" r="4.5" fill="#D21034" />
+            <circle cx="19.5" cy="12" r="3.5" fill="#FFFFFF" />
+          </svg>
+        );
+      case 'AU':
+        return (
+          <svg viewBox="0 0 36 24" className="w-full h-full">
+            <rect width="36" height="24" fill="#00008B" />
+            <rect width="15" height="11" fill="#012169" />
+            <rect x="6" y="0" width="3" height="11" fill="#FFFFFF" />
+            <rect x="0" y="4" width="15" height="3" fill="#FFFFFF" />
+            <rect x="6.5" y="0" width="2" height="11" fill="#C8102E" />
+            <rect x="0" y="4.5" width="15" height="2" fill="#C8102E" />
+            <circle cx="26" cy="7" r="1.3" fill="#FFFFFF" />
+            <circle cx="29" cy="12" r="1.3" fill="#FFFFFF" />
+            <circle cx="24" cy="15" r="1.3" fill="#FFFFFF" />
+            <circle cx="27" cy="19" r="1.3" fill="#FFFFFF" />
+          </svg>
+        );
       default:
         return null;
     }

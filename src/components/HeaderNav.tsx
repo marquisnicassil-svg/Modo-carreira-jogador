@@ -1,11 +1,12 @@
 import { motion } from 'motion/react';
-import { ArrowLeft, BarChart3, BookOpen, FolderKanban, Plus, Trophy } from 'lucide-react';
+import { ArrowLeft, BarChart3, BookOpen, FolderKanban, Plus, Settings, Trophy } from 'lucide-react';
 import { ActiveTab } from '../types/career';
 
 interface HeaderNavProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenNewCareer: () => void;
+  onOpenSettings: () => void;
   onGoHome?: () => void;
   onGoBack?: () => void;
   canGoBack?: boolean;
@@ -24,6 +25,7 @@ export function HeaderNav({
   activeTab,
   onSelectTab,
   onOpenNewCareer,
+  onOpenSettings,
   onGoHome,
   onGoBack,
   canGoBack = false,
@@ -34,7 +36,7 @@ export function HeaderNav({
     <>
       {/* Desktop & Mobile Top Header (Compact 48px on mobile, 64px on desktop) */}
       <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#080D1A]/98 pt-safe gpu-layer">
-        <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-4 md:h-16 md:gap-8 md:px-6">
+        <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4 md:h-16 md:gap-8 md:px-6">
           {/* Zone 1: Optional App Back Button + Brand Wordmark */}
           <div className="flex items-center gap-1.5 min-w-0 shrink-0">
             {canGoBack && onGoBack && (
@@ -44,7 +46,7 @@ export function HeaderNav({
                 onClick={onGoBack}
                 aria-label="Voltar para a aba anterior"
                 title="Voltar"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 transition-colors hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 transition-colors hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </motion.button>
@@ -53,7 +55,7 @@ export function HeaderNav({
               type="button"
               onClick={() => (onGoHome ? onGoHome() : onSelectTab('carreira'))}
               aria-label="Modo Carreira, ir para a tela inicial"
-              className="font-display text-xl font-extrabold tracking-wide text-white uppercase whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1 active:scale-[0.98] transition-transform"
+              className="font-display text-lg sm:text-xl font-extrabold tracking-wide text-white uppercase whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1 active:scale-[0.98] transition-transform"
             >
               Modo Carreira
             </button>
@@ -91,29 +93,56 @@ export function HeaderNav({
                 })}
               </nav>
 
-              {/* Mobile Center Player Context (compact, single-line) */}
+              {/* Mobile Center Player Context (shrinks cleanly so Zone 3 never overflows) */}
               <span
                 aria-label={`Jogador ativo: ${playerName}`}
-                className="md:hidden text-xs font-medium text-slate-400 truncate max-w-[120px]"
+                className="md:hidden min-w-0 flex-1 text-center text-xs font-medium text-slate-400 truncate px-1"
               >
                 {playerName}
               </span>
 
-              {/* Zone 3: 1 Primary CTA */}
-              <div className="flex items-center shrink-0">
+              {/* Zone 3: Primary CTA + Settings Button */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.95 }}
                   onClick={onOpenNewCareer}
                   aria-label="Criar nova carreira"
-                  className="inline-flex min-h-[36px] md:min-h-[40px] items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 md:px-4 md:py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-blue-500 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="inline-flex min-h-[36px] md:min-h-[40px] items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 sm:px-3 md:px-4 md:py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-blue-500 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
                   <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <span className="hidden sm:inline">Nova Carreira</span>
                   <span className="sm:hidden">Nova</span>
                 </motion.button>
+
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.93 }}
+                  onClick={onOpenSettings}
+                  aria-label="Abrir configurações"
+                  title="Configurações"
+                  className="inline-flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08] text-white transition-colors hover:bg-white/[0.15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0"
+                >
+                  <Settings className="h-4 w-4" aria-hidden="true" />
+                </motion.button>
               </div>
             </>
+          )}
+
+          {isHomeView && (
+            <div className="flex items-center shrink-0">
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={onOpenSettings}
+                aria-label="Abrir configurações"
+                title="Configurações"
+                className="inline-flex min-h-[36px] md:min-h-[40px] items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-semibold text-white transition-colors hover:bg-white/[0.15] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Configurações</span>
+              </motion.button>
+            </div>
           )}
         </div>
       </header>

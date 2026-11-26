@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ChevronRight,
   ClipboardPaste,
   Copy,
@@ -29,6 +30,7 @@ interface HomeDashboardProps {
   onModeChange?: (mode: HomeScreenMode) => void;
   onContinueCareer: (id: string) => void;
   onOpenNewCareer: () => void;
+  onCompareCareers?: () => void;
   onImportCareers: (imported: CareerProfile[]) => void;
 }
 
@@ -38,6 +40,7 @@ export function HomeDashboard({
   onModeChange,
   onContinueCareer,
   onOpenNewCareer,
+  onCompareCareers,
   onImportCareers,
 }: HomeDashboardProps) {
   const [internalMode, setInternalMode] = useState<HomeScreenMode>('menu');
@@ -50,6 +53,8 @@ export function HomeDashboard({
     }
   };
   const [backupFeedback, setBackupFeedback] = useState<string | null>(null);
+  const [menuFeedback, setMenuFeedback] = useState<string | null>(null);
+  const [confirmExport, setConfirmExport] = useState(false);
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [pastedJson, setPastedJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +62,11 @@ export function HomeDashboard({
   const showFeedback = (msg: string) => {
     setBackupFeedback(msg);
     window.setTimeout(() => setBackupFeedback((prev) => (prev === msg ? null : prev)), 3500);
+  };
+
+  const showMenuFeedback = (msg: string) => {
+    setMenuFeedback(msg);
+    window.setTimeout(() => setMenuFeedback((prev) => (prev === msg ? null : prev)), 3800);
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,7 +237,10 @@ export function HomeDashboard({
             <motion.button
               type="button"
               whileTap={{ scale: 0.95 }}
-              onClick={() => setMode('menu')}
+              onClick={() => {
+                setConfirmExport(false);
+                setMode('menu');
+              }}
               aria-label="Voltar para o menu inicial"
               className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09]"
             >
@@ -258,11 +271,11 @@ export function HomeDashboard({
           )}
 
           <div className="mt-5 flex flex-col sm:flex-row gap-3">
-            {careers.length > 0 && (
+            {careers.length > 0 && !confirmExport && (
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.97 }}
-                onClick={handleExport}
+                onClick={() => setConfirmExport(true)}
                 className="flex-1 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-500"
               >
                 <Download className="h-4 w-4" aria-hidden="true" />
@@ -293,6 +306,46 @@ export function HomeDashboard({
               className="hidden"
             />
           </div>
+
+          <AnimatePresence>
+            {confirmExport && careers.length > 0 && (
+              <motion.div
+                role="group"
+                aria-label="Confirmar exportação do backup"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-3 rounded-xl border border-blue-500/30 bg-blue-600/10 p-3.5 space-y-3"
+              >
+                <p className="text-xs sm:text-sm text-blue-100 font-medium">
+                  Deseja confirmar e gerar o backup de {careers.length}{' '}
+                  {careers.length === 1 ? 'carreira salva' : 'carreiras salvas'}?
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setConfirmExport(false)}
+                    className="min-h-[44px] rounded-xl border border-white/10 bg-white/[0.05] px-4 text-xs font-semibold text-slate-200 hover:bg-white/[0.1]"
+                  >
+                    Cancelar
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      setConfirmExport(false);
+                      void handleExport();
+                    }}
+                    className="min-h-[44px] rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-500"
+                  >
+                    Confirmar Backup
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="mt-3 flex flex-wrap gap-2">
             {careers.length > 0 && (
@@ -367,7 +420,7 @@ export function HomeDashboard({
               : 'Crie uma nova carreira ou continue com um jogador já salvo.'}
           </p>
 
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-6 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
             <motion.button
               type="button"
               whileTap={{ scale: 0.97 }}
@@ -390,6 +443,39 @@ export function HomeDashboard({
               </motion.button>
             )}
 
+            {onCompareCareers && (
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  if (careers.length >= 2) {
+                    setMenuFeedback(null);
+                    onCompareCareers();
+                  } else {
+                    showMenuFeedback(
+                      'Crie ou importe pelo menos 2 carreiras salvas para comparar jogadores.'
+                    );
+                  }
+                }}
+                aria-label={
+                  careers.length >= 2
+                    ? 'Comparar dois jogadores salvos'
+                    : 'Comparar jogador (requer pelo menos 2 carreiras salvas)'
+                }
+                className={`w-full sm:w-auto inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-bold transition-colors ${
+                  careers.length >= 2
+                    ? 'border-amber-400/35 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20'
+                    : 'border-white/15 bg-white/[0.05] text-slate-200 hover:bg-white/[0.1]'
+                }`}
+              >
+                <ArrowLeftRight
+                  className={`h-4 w-4 ${careers.length >= 2 ? 'text-amber-300' : 'text-slate-300'}`}
+                  aria-hidden="true"
+                />
+                Comparar Jogador
+              </motion.button>
+            )}
+
             <motion.button
               type="button"
               whileTap={{ scale: 0.97 }}
@@ -400,6 +486,16 @@ export function HomeDashboard({
               Backup JSON
             </motion.button>
           </div>
+
+          {menuFeedback && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs sm:text-sm text-amber-200"
+            >
+              {menuFeedback}
+            </div>
+          )}
         </motion.section>
       )}
     </AnimatePresence>
