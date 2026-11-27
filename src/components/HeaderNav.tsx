@@ -1,12 +1,24 @@
 import { motion } from 'motion/react';
-import { ArrowLeft, BarChart3, BookOpen, FolderKanban, Plus, Settings, Trophy } from 'lucide-react';
+import {
+  ArrowLeft,
+  BarChart3,
+  BookOpen,
+  FolderKanban,
+  Plus,
+  Settings,
+  Trophy,
+  User,
+} from 'lucide-react';
 import { ActiveTab } from '../types/career';
+import { SynapseSession } from '../utils/synapseAuth';
 
 interface HeaderNavProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenNewCareer: () => void;
   onOpenSettings: () => void;
+  onOpenAccount: () => void;
+  synapseSession: SynapseSession | null;
   onGoHome?: () => void;
   onGoBack?: () => void;
   canGoBack?: boolean;
@@ -26,12 +38,17 @@ export function HeaderNav({
   onSelectTab,
   onOpenNewCareer,
   onOpenSettings,
+  onOpenAccount,
+  synapseSession,
   onGoHome,
   onGoBack,
   canGoBack = false,
   isHomeView = false,
   playerName,
 }: HeaderNavProps) {
+  const accountInitials = synapseSession
+    ? (synapseSession.name || synapseSession.email || 'SY').trim().slice(0, 2).toUpperCase()
+    : '';
   return (
     <>
       {/* Desktop & Mobile Top Header (Compact 48px on mobile, 64px on desktop) */}
@@ -101,7 +118,7 @@ export function HeaderNav({
                 {playerName}
               </span>
 
-              {/* Zone 3: Primary CTA + Settings Button */}
+              {/* Zone 3: Primary CTA + Account + Settings Button */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <motion.button
                   type="button"
@@ -113,6 +130,29 @@ export function HeaderNav({
                   <Plus className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <span className="hidden sm:inline">Nova Carreira</span>
                   <span className="sm:hidden">Nova</span>
+                </motion.button>
+
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.93 }}
+                  onClick={onOpenAccount}
+                  aria-label={
+                    synapseSession
+                      ? `Conta Synapse conectada: ${synapseSession.name}`
+                      : 'Entrar com Synapse'
+                  }
+                  title={synapseSession ? `${synapseSession.name} (Synapse)` : 'Entrar com Synapse'}
+                  className={`inline-flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl border text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shrink-0 ${
+                    synapseSession
+                      ? 'border-blue-500/45 bg-blue-600/20 text-blue-300 hover:bg-blue-600/30'
+                      : 'border-white/15 bg-white/[0.08] text-white hover:bg-white/[0.15]'
+                  }`}
+                >
+                  {synapseSession ? (
+                    <span className="font-display text-xs font-extrabold">{accountInitials}</span>
+                  ) : (
+                    <User className="h-4 w-4" aria-hidden="true" />
+                  )}
                 </motion.button>
 
                 <motion.button
@@ -130,17 +170,50 @@ export function HeaderNav({
           )}
 
           {isHomeView && (
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={onOpenAccount}
+                aria-label={
+                  synapseSession
+                    ? `Conta Synapse conectada: ${synapseSession.name}`
+                    : 'Entrar com Synapse'
+                }
+                title={synapseSession ? `${synapseSession.name} (Synapse)` : 'Entrar com Synapse'}
+                className={`inline-flex min-h-[36px] md:min-h-[40px] items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  synapseSession
+                    ? 'border-blue-500/45 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30'
+                    : 'border-blue-500/40 bg-blue-600 text-white hover:bg-blue-500'
+                }`}
+              >
+                {synapseSession ? (
+                  <>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-600 font-display text-[11px] font-extrabold text-white">
+                      {accountInitials}
+                    </span>
+                    <span className="max-w-[96px] truncate hidden sm:inline">
+                      {synapseSession.name.split(' ')[0]}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <User className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>Entrar</span>
+                  </>
+                )}
+              </motion.button>
+
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.95 }}
                 onClick={onOpenSettings}
                 aria-label="Abrir configurações"
                 title="Configurações"
-                className="inline-flex min-h-[36px] md:min-h-[40px] items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-semibold text-white transition-colors hover:bg-white/[0.15] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="inline-flex min-h-[36px] md:min-h-[40px] items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] px-2.5 sm:px-3 text-xs font-semibold text-white transition-colors hover:bg-white/[0.15] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>Configurações</span>
+                <span className="hidden sm:inline">Configurações</span>
               </motion.button>
             </div>
           )}

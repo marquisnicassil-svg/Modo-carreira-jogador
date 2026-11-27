@@ -21,15 +21,31 @@ import {
   NewCareerModal,
 } from './components/Modals';
 import { CompareCareersModal } from './components/CompareCareersModal';
-import { SettingsModal } from './components/SettingsModal';
+import { LoginScreen } from './components/LoginScreen';
+import { SettingsModal, SettingsSection } from './components/SettingsModal';
 import { ActiveTab, AppSettings, CareerProfile, SeasonRecord } from './types/career';
 import { createId, getPrimeSeasonId } from './utils/careerEngine';
 import {
+  loadAccountWorkspace,
   loadAppSettings,
-  loadWorkspace,
+  saveAccountWorkspace,
   saveAppSettings,
-  saveWorkspace,
 } from './utils/storage';
+import {
+  buildSessionFromPayload,
+  buildSynapsePortalUrl,
+  clearUrlHash,
+  fetchSynapseCurrentUser,
+  generateSynapseState,
+  getSynapseAccountKey,
+  loadSynapseSession,
+  parseSynapseHashParams,
+  saveSynapsePendingState,
+  saveSynapseSession,
+  SYNAPSE_CONFIG,
+  SynapseAuthPayload,
+  SynapseSession,
+} from './utils/synapseAuth';
 
 interface NavEntry {
   isHome: boolean;
@@ -40,12 +56,27 @@ interface NavEntry {
 }
 
 export default function App() {
-  const initial = useMemo(() => loadWorkspace(), []);
   const initialSettings = useMemo(() => loadAppSettings(), []);
+  const initialSynapseSession = useMemo(() => loadSynapseSession(), []);
+  const initialAccountKey = useMemo(
+    () => getSynapseAccountKey(initialSynapseSession),
+    [initialSynapseSession]
+  );
+  const initial = useMemo(
+    () => loadAccountWorkspace(initialAccountKey),
+    [initialAccountKey]
+  );
   const [careers, setCareers] = useState<CareerProfile[]>(initial.careers);
   const [activeCareerId, setActiveCareerId] = useState<string | null>(initial.activeCareerId);
   const [activeTab, setActiveTab] = useState<ActiveTab>('carreira');
   const [appSettings, setAppSettings] = useState<AppSettings>(initialSettings);
+  const [synapseSession, setSynapseSession] = useState<SynapseSession | null>(
+    initialSynapseSession
+  );
+  const accountKey = useMemo(
+    () => getSynapseAccountKey(synapseSession),
+    [synapseSession]
+  );
 
   const activeCareer = useMemo(
     () =>
@@ -63,6 +94,11 @@ export default function App() {
   const [showEditPlayerModal, setShowEditPlayerModal] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsInitialSection, setSettingsInitialSection] =
+    useState<SettingsSection>('estilo');
+  const [ssoWaiting, setSsoWaiting] = useState(false);
+  const [ssoPopupBlocked, setSsoPopupBlocked] = useState(false);
+  const [authExternalError, setAuthExternalError] = useState<string | null>(null);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [bannerToast, setBannerToast] = useState<string | null>(null);
   const [srAnnouncement, setSrAnnouncement] = useState('');
@@ -73,6 +109,9 @@ export default function App() {
   const [transitionLoader, setTransitionLoader] = useState<TransitionLoaderState | null>(null);
   const allowExitRef = useRef(false);
   const handleBackPressRef = useRef<() => void>(() => {});
+  const ssoPopupRef = useRef<Window | null>(null);
+  const ssoPollTimerRef = useRef<number | null>(null);
+  const prevAccountKeyRef = useRef<string | null>(initialAccountKey);
 
   const announce = (msg: string) => {
     setSrAnnouncement('');
@@ -102,8 +141,39 @@ export default function App() {
   };
 
   useEffect(() => {
-    saveWorkspace(careers, activeCareerId);
-  }, [careers, activeCareerId]);
+    if (prevAccountKeyRef.current === accountKey) return;
+    prevAccountKeyRef.current = accountKey;
+
+    if (!accountKey) {
+      setCareers([]);
+      setActiveCareerId(null);
+      setShowHomeDashboard(true);
+      setHomeMode('menu');
+      setNavHistory([]);
+      setActiveTab('carreira');
+      return;
+    }
+
+    const loaded = loadAccountWorkspace(accountKey);
+    setCareers(loaded.careers);
+    setActiveCareerId(loaded.activeCareerId);
+    if (loaded.careers.length > 0) {
+      const target =
+        loaded.careers.find((c) => c.id === loaded.activeCareerId) || loaded.careers[0];
+      setSelectedYear(target.currentYear);
+    } else {
+      setSelectedYear(2026);
+    }
+    setShowHomeDashboard(true);
+    setHomeMode('menu');
+    setNavHistory([]);
+    setActiveTab('carreira');
+  }, [accountKey]);
+
+  useEffect(() => {
+    if (!accountKey) return;
+    saveAccountWorkspace(accountKey, careers, activeCareerId);
+  }, [accountKey, careers, activeCareerId]);
 
   useEffect(() => {
     saveAppSettings(appSettings);
@@ -123,6 +193,191 @@ export default function App() {
     setTimeout(() => {
       setBannerToast((prev) => (prev === msg ? null : prev));
     }, 3400);
+  };
+
+  useEffect(() => {
+    saveSynapseSession(synapseSession);
+  }, [synapseSession]);
+
+  const stopSsoPolling = () => {
+    if (ssoPollTimerRef.current !== null) {
+      window.clearInterval(ssoPollTimerRef.current);
+      ssoPollTimerRef.current = null;
+    }
+  };
+
+  const applySynapsePayload = (payload: SynapseAuthPayload) => {
+    stopSsoPolling();
+    setSsoWaiting(false);
+    setSsoPopupBlocked(false);
+
+    try {
+      if (ssoPopupRef.current && !ssoPopupRef.current.closed) {
+        ssoPopupRef.current.close();
+      }
+    } catch {
+      // Ignore cross-origin close restrictions
+    }
+    ssoPopupRef.current = null;
+
+    const { session, error } = buildSessionFromPayload(payload);
+    if (error || !session) {
+      setAuthExternalError(error || 'Não foi possível concluir o login no Synapse.');
+      return;
+    }
+
+    setAuthExternalError(null);
+    setSynapseSession(session);
+    showToast(`Conectado ao Synapse como ${session.name}.`);
+    announce(`Conectado ao Synapse como ${session.name}`);
+
+    void fetchSynapseCurrentUser(session.accessToken).then((verified) => {
+      if (!verified) return;
+      setSynapseSession((prev) => {
+        if (!prev || prev.accessToken !== session.accessToken) return prev;
+        return {
+          ...prev,
+          uid: verified.uid || prev.uid,
+          email: verified.email || prev.email,
+          name: verified.name || prev.name,
+        };
+      });
+    });
+  };
+
+  const applySynapsePayloadRef = useRef(applySynapsePayload);
+  applySynapsePayloadRef.current = applySynapsePayload;
+
+  // Handle URL hash SSO return on mount & verify any stored Synapse session
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hashPayload = parseSynapseHashParams(window.location.hash);
+    if (hashPayload) {
+      // If we are inside an SSO popup that redirected back instead of calling postMessage,
+      // forward the raw hash to the opener window so it validates state and closes the popup.
+      if (window.opener && window.opener !== window) {
+        try {
+          window.opener.postMessage(
+            { type: 'SYNAPSE_AUTH_CALLBACK_HASH', hash: window.location.hash },
+            window.location.origin
+          );
+          clearUrlHash();
+          window.close();
+          return;
+        } catch {
+          // Fall back to processing in current window
+        }
+      }
+
+      clearUrlHash();
+      setShowSplash(false);
+      applySynapsePayloadRef.current(hashPayload);
+      return;
+    }
+
+    if (initialSynapseSession?.accessToken) {
+      void fetchSynapseCurrentUser(initialSynapseSession.accessToken).then((verified) => {
+        if (!verified) {
+          setSynapseSession(null);
+          return;
+        }
+        setSynapseSession((prev) => {
+          if (!prev || prev.accessToken !== initialSynapseSession.accessToken) return prev;
+          return {
+            ...prev,
+            uid: verified.uid || prev.uid,
+            email: verified.email || prev.email,
+            name: verified.name || prev.name,
+          };
+        });
+      });
+    }
+  }, [initialSynapseSession]);
+
+  // Listen for Synapse Portal popup postMessage callback
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (
+        event.origin === SYNAPSE_CONFIG.portalOrigin &&
+        event.data &&
+        typeof event.data === 'object' &&
+        event.data.type === 'SYNAPSE_AUTH_SUCCESS'
+      ) {
+        applySynapsePayloadRef.current(event.data as SynapseAuthPayload);
+        return;
+      }
+
+      if (
+        event.origin === window.location.origin &&
+        event.data &&
+        typeof event.data === 'object' &&
+        event.data.type === 'SYNAPSE_AUTH_CALLBACK_HASH' &&
+        typeof event.data.hash === 'string'
+      ) {
+        const parsed = parseSynapseHashParams(event.data.hash);
+        if (parsed) {
+          applySynapsePayloadRef.current(parsed);
+        }
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      stopSsoPolling();
+    };
+  }, []);
+
+  const handleStartSynapseSso = (mode: 'popup' | 'redirect') => {
+    setAuthExternalError(null);
+    setSsoPopupBlocked(false);
+
+    const state = generateSynapseState();
+    saveSynapsePendingState(state);
+
+    if (mode === 'redirect') {
+      window.location.assign(buildSynapsePortalUrl(state));
+      return;
+    }
+
+    const width = 480;
+    const height = 680;
+    const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - width) / 2));
+    const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - height) / 2));
+    const popup = window.open(
+      buildSynapsePortalUrl(state, 'popup'),
+      'synapse_sso_popup',
+      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no`
+    );
+
+    if (!popup || popup.closed) {
+      setSsoWaiting(false);
+      setSsoPopupBlocked(true);
+      showToast('Pop-up bloqueado. Use o botão de redirecionamento abaixo.');
+      return;
+    }
+
+    ssoPopupRef.current = popup;
+    setSsoWaiting(true);
+    stopSsoPolling();
+    ssoPollTimerRef.current = window.setInterval(() => {
+      if (!ssoPopupRef.current || ssoPopupRef.current.closed) {
+        stopSsoPolling();
+        ssoPopupRef.current = null;
+        setSsoWaiting(false);
+      }
+    }, 500);
+  };
+
+  const handleLogoutSynapse = () => {
+    stopSsoPolling();
+    setSsoWaiting(false);
+    setSsoPopupBlocked(false);
+    setAuthExternalError(null);
+    setSynapseSession(null);
+    showToast('Você saiu da sua conta Synapse.');
+    announce('Desconectado da conta Synapse');
   };
 
   const selectedSeason: SeasonRecord | null = useMemo(() => {
@@ -773,6 +1028,11 @@ export default function App() {
     showEndSeasonModal,
   ]);
 
+  const openSettings = (section: SettingsSection = 'estilo') => {
+    setSettingsInitialSection(section);
+    setShowSettingsModal(true);
+  };
+
   const tabLabels: Record<ActiveTab, string> = {
     carreira: 'Carreira',
     estatisticas: 'Estatísticas',
@@ -802,135 +1062,160 @@ export default function App() {
           {transitionLoader && <TransitionLoader {...transitionLoader} />}
         </AnimatePresence>
 
-        <HeaderNav
-          activeTab={activeTab}
-          onSelectTab={(tab) => {
-            pushCurrentToHistory({ isHome: false, tab });
-            setActiveTab(tab);
-            setShowHomeDashboard(false);
-            announce(`Aba ${tabLabels[tab]} aberta`);
-          }}
-          onOpenNewCareer={() => setShowNewCareerModal(true)}
-          onOpenSettings={() => setShowSettingsModal(true)}
-          onGoHome={() => {
-            pushCurrentToHistory({ isHome: true, homeMode: 'menu', tab: 'carreira' });
-            setShowHomeDashboard(true);
-            setHomeMode('menu');
-            setActiveTab('carreira');
-            announce('Tela inicial aberta');
-          }}
-          onGoBack={() => {
-            handleBackPress();
-            announce('Voltando para a tela anterior');
-          }}
-          canGoBack={hasValidHistory || (isOnHomeScreen && homeMode !== 'menu')}
-          isHomeView={isOnHomeScreen}
-          playerName={activeCareer ? activeCareer.playerName : 'Sem jogador'}
-        />
-
-        {/* Main Content Container (padded at bottom on mobile for thumb nav bar + safe area) */}
-        <main className="mc-main-container mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:px-6 md:pt-6 md:pb-12 space-y-6">
-          <AnimatePresence>
-            {bannerToast && (
-              <motion.div
-                role="status"
-                aria-live="polite"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-xl border border-blue-500/35 bg-blue-600/15 px-4 py-3 text-xs sm:text-sm font-medium text-blue-100"
-              >
-                {bannerToast}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {!isOnHomeScreen && activeTab !== 'saves' && activeCareer && selectedSeason && (
-            <PlayerBanner
-              career={activeCareer}
-              selectedSeason={selectedSeason}
-              primeSeasonId={primeSeasonId}
-              bannerStyle={appSettings.bannerStyle}
-              showPrimeBadge={appSettings.showPrimeBadge}
-              onSelectSeasonYear={(yr) => {
-                if (activeTab !== 'carreira') {
-                  pushCurrentToHistory({ isHome: false, tab: 'carreira', year: yr });
-                  setActiveTab('carreira');
-                }
-                setSelectedYear(yr);
-                announce(`Temporada ${yr} selecionada`);
+        {!synapseSession ? (
+          <LoginScreen
+            ssoWaiting={ssoWaiting}
+            ssoPopupBlocked={ssoPopupBlocked}
+            externalError={authExternalError}
+            toastMessage={bannerToast}
+            onStartSynapseSso={handleStartSynapseSso}
+            onAuthenticated={(nextSession) => {
+              setAuthExternalError(null);
+              setSynapseSession(nextSession);
+              showToast(`Conectado ao Synapse como ${nextSession.name}.`);
+              announce(`Conectado ao Synapse como ${nextSession.name}`);
+            }}
+            onOpenSettings={() => openSettings('estilo')}
+          />
+        ) : (
+          <>
+            <HeaderNav
+              activeTab={activeTab}
+              onSelectTab={(tab) => {
+                pushCurrentToHistory({ isHome: false, tab });
+                setActiveTab(tab);
+                setShowHomeDashboard(false);
+                announce(`Aba ${tabLabels[tab]} aberta`);
               }}
-              onOpenEditPlayer={() => setShowEditPlayerModal(true)}
-              onDeleteActivePlayer={() => handleDeleteCareer(activeCareer.id)}
+              onOpenNewCareer={() => setShowNewCareerModal(true)}
+              onOpenSettings={() => openSettings('estilo')}
+              onOpenAccount={() => openSettings('contas')}
+              synapseSession={synapseSession}
+              onGoHome={() => {
+                pushCurrentToHistory({ isHome: true, homeMode: 'menu', tab: 'carreira' });
+                setShowHomeDashboard(true);
+                setHomeMode('menu');
+                setActiveTab('carreira');
+                announce('Tela inicial aberta');
+              }}
+              onGoBack={() => {
+                handleBackPress();
+                announce('Voltando para a tela anterior');
+              }}
+              canGoBack={hasValidHistory || (isOnHomeScreen && homeMode !== 'menu')}
+              isHomeView={isOnHomeScreen}
+              playerName={activeCareer ? activeCareer.playerName : 'Sem jogador'}
             />
-          )}
 
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={`${isOnHomeScreen ? 'home' : activeTab}-${activeCareer?.id || 'empty'}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-            >
-            {isOnHomeScreen ? (
-              <HomeDashboard
-                careers={careers}
-                mode={homeMode}
-                onModeChange={handleHomeModeChange}
-                onContinueCareer={handleSelectCareer}
-                onOpenNewCareer={() => setShowNewCareerModal(true)}
-                onCompareCareers={() => setShowCompareModal(true)}
-                onImportCareers={handleImportCareers}
-              />
-            ) : activeTab === 'saves' ? (
-              <SavesView
-                careers={careers}
-                activeCareerId={activeCareerId}
-                onSelectCareer={(id) => handleSelectCareer(id)}
-                onOpenNewCareer={() => setShowNewCareerModal(true)}
-                onDuplicateCareer={handleDuplicateCareer}
-                onDeleteCareer={handleDeleteCareer}
-                onClearAllCareers={handleClearAllCareers}
-                onImportCareers={handleImportCareers}
-              />
-            ) : (
-              <>
-                {activeTab === 'carreira' && (
-                  <SeasonView
-                    career={activeCareer}
-                    season={selectedSeason}
-                    isCurrentActiveSeason={isCurrentActiveSeason}
-                    onUpdateSeason={handleUpdateSeason}
-                    onOpenEndSeason={() => setShowEndSeasonModal(true)}
-                    onJumpToCurrentSeason={() => {
-                      setSelectedYear(activeCareer.currentYear);
-                      announce(`Temporada ${activeCareer.currentYear} selecionada`);
-                    }}
-                    onAnnounce={announce}
-                    showPulseBar={appSettings.showPulseBar}
-                  />
+            {/* Main Content Container (padded at bottom on mobile for thumb nav bar + safe area) */}
+            <main className="mc-main-container mx-auto w-full max-w-6xl flex-1 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:px-6 md:pt-6 md:pb-12 space-y-6">
+              <AnimatePresence>
+                {bannerToast && (
+                  <motion.div
+                    role="status"
+                    aria-live="polite"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                    className="rounded-xl border border-blue-500/35 bg-blue-600/15 px-4 py-3 text-xs sm:text-sm font-medium text-blue-100"
+                  >
+                    {bannerToast}
+                  </motion.div>
                 )}
+              </AnimatePresence>
 
-                {activeTab === 'estatisticas' && (
-                  <StatsView
-                    career={activeCareer}
-                    onSelectSeasonFromTimeline={handleJumpToSeason}
-                  />
-                )}
+              {!isOnHomeScreen && activeTab !== 'saves' && activeCareer && selectedSeason && (
+                <PlayerBanner
+                  career={activeCareer}
+                  selectedSeason={selectedSeason}
+                  primeSeasonId={primeSeasonId}
+                  bannerStyle={appSettings.bannerStyle}
+                  showPrimeBadge={appSettings.showPrimeBadge}
+                  onSelectSeasonYear={(yr) => {
+                    if (activeTab !== 'carreira') {
+                      pushCurrentToHistory({ isHome: false, tab: 'carreira', year: yr });
+                      setActiveTab('carreira');
+                    }
+                    setSelectedYear(yr);
+                    announce(`Temporada ${yr} selecionada`);
+                  }}
+                  onOpenEditPlayer={() => setShowEditPlayerModal(true)}
+                  onDeleteActivePlayer={() => handleDeleteCareer(activeCareer.id)}
+                />
+              )}
 
-                {activeTab === 'historia' && (
-                  <StoryView
-                    career={activeCareer}
-                    onSelectSeasonYear={handleJumpToSeason}
-                  />
-                )}
-              </>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`${isOnHomeScreen ? 'home' : activeTab}-${activeCareer?.id || 'empty'}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {isOnHomeScreen ? (
+                    <HomeDashboard
+                      careers={careers}
+                      mode={homeMode}
+                      onModeChange={handleHomeModeChange}
+                      onContinueCareer={handleSelectCareer}
+                      onOpenNewCareer={() => setShowNewCareerModal(true)}
+                      onCompareCareers={() => setShowCompareModal(true)}
+                      onImportCareers={handleImportCareers}
+                      synapseSession={synapseSession}
+                      onOpenSynapseAuth={() => openSettings('contas')}
+                      onQuickSynapseSso={() => handleStartSynapseSso('popup')}
+                      onLogoutSynapse={handleLogoutSynapse}
+                    />
+                  ) : activeTab === 'saves' ? (
+                    <SavesView
+                      careers={careers}
+                      activeCareerId={activeCareerId}
+                      onSelectCareer={(id) => handleSelectCareer(id)}
+                      onOpenNewCareer={() => setShowNewCareerModal(true)}
+                      onDuplicateCareer={handleDuplicateCareer}
+                      onDeleteCareer={handleDeleteCareer}
+                      onClearAllCareers={handleClearAllCareers}
+                      onImportCareers={handleImportCareers}
+                    />
+                  ) : (
+                    <>
+                      {activeTab === 'carreira' && (
+                        <SeasonView
+                          career={activeCareer}
+                          season={selectedSeason}
+                          isCurrentActiveSeason={isCurrentActiveSeason}
+                          onUpdateSeason={handleUpdateSeason}
+                          onOpenEndSeason={() => setShowEndSeasonModal(true)}
+                          onJumpToCurrentSeason={() => {
+                            setSelectedYear(activeCareer.currentYear);
+                            announce(`Temporada ${activeCareer.currentYear} selecionada`);
+                          }}
+                          onAnnounce={announce}
+                          showPulseBar={appSettings.showPulseBar}
+                        />
+                      )}
+
+                      {activeTab === 'estatisticas' && (
+                        <StatsView
+                          career={activeCareer}
+                          onSelectSeasonFromTimeline={handleJumpToSeason}
+                        />
+                      )}
+
+                      {activeTab === 'historia' && (
+                        <StoryView
+                          career={activeCareer}
+                          onSelectSeasonYear={handleJumpToSeason}
+                        />
+                      )}
+                    </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </main>
+          </>
+        )}
 
       {/* Modals */}
       <AnimatePresence>
@@ -988,6 +1273,24 @@ export default function App() {
               setShowSettingsModal(false);
               setShowSplash(true);
             }}
+            initialSection={settingsInitialSection}
+            synapseSession={synapseSession}
+            careers={careers}
+            onSelectCareer={handleSelectCareer}
+            onUpdateSessionProfile={(updates) => {
+              setSynapseSession((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      uid: updates.uid || prev.uid,
+                      email: updates.email || prev.email,
+                      name: updates.name || prev.name,
+                    }
+                  : prev
+              );
+              showToast('Sessão Synapse verificada.');
+            }}
+            onLogoutSynapse={handleLogoutSynapse}
           />
         )}
       </AnimatePresence>

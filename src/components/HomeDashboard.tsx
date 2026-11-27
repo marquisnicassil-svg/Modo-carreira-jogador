@@ -8,12 +8,16 @@ import {
   Copy,
   Download,
   FolderKanban,
+  LogIn,
+  LogOut,
   Play,
   Plus,
+  ShieldCheck,
   Trophy,
   Upload,
 } from 'lucide-react';
 import { CareerProfile } from '../types/career';
+import { SynapseSession } from '../utils/synapseAuth';
 import { getClubAccent, getClubMonogram } from '../utils/careerEngine';
 import {
   buildCareerBackupJson,
@@ -32,6 +36,10 @@ interface HomeDashboardProps {
   onOpenNewCareer: () => void;
   onCompareCareers?: () => void;
   onImportCareers: (imported: CareerProfile[]) => void;
+  synapseSession?: SynapseSession | null;
+  onOpenSynapseAuth?: () => void;
+  onQuickSynapseSso?: () => void;
+  onLogoutSynapse?: () => void;
 }
 
 export function HomeDashboard({
@@ -42,6 +50,10 @@ export function HomeDashboard({
   onOpenNewCareer,
   onCompareCareers,
   onImportCareers,
+  synapseSession = null,
+  onOpenSynapseAuth,
+  onQuickSynapseSso,
+  onLogoutSynapse,
 }: HomeDashboardProps) {
   const [internalMode, setInternalMode] = useState<HomeScreenMode>('menu');
   const mode = controlledMode ?? internalMode;
@@ -494,6 +506,98 @@ export function HomeDashboard({
               className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs sm:text-sm text-amber-200"
             >
               {menuFeedback}
+            </div>
+          )}
+
+          {(onOpenSynapseAuth || onQuickSynapseSso) && (
+            <div className="mt-6 pt-5 border-t border-white/[0.08]">
+              {synapseSession ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-[#0B1222] px-4 py-3 text-left">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      aria-hidden="true"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/15 font-display text-sm font-extrabold text-emerald-300 uppercase"
+                    >
+                      {(synapseSession.name || synapseSession.email || 'SY')
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
+                        <span className="text-xs sm:text-sm font-bold text-white truncate">
+                          {synapseSession.name}
+                        </span>
+                      </div>
+                      <span className="block text-[11px] text-slate-400 truncate">
+                        {synapseSession.email || 'Conta Synapse conectada'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {onOpenSynapseAuth && (
+                      <button
+                        type="button"
+                        onClick={onOpenSynapseAuth}
+                        className="flex-1 sm:flex-initial inline-flex min-h-[38px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09]"
+                      >
+                        Conta
+                      </button>
+                    )}
+                    {onLogoutSynapse && (
+                      <button
+                        type="button"
+                        onClick={onLogoutSynapse}
+                        className="flex-1 sm:flex-initial inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-semibold text-rose-200 transition-colors hover:bg-rose-500/20"
+                      >
+                        <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                        Sair
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#0B1222] px-4 py-3 text-left">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      aria-hidden="true"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/25 bg-blue-600/15 text-blue-400"
+                    >
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-xs sm:text-sm font-bold text-white">
+                        Central de Contas Synapse
+                      </span>
+                      <span className="block text-[11px] text-slate-400 truncate">
+                        Entre em 1 clique ou com e-mail e senha
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.97 }}
+                      onClick={onQuickSynapseSso || onOpenSynapseAuth}
+                      className="flex-1 sm:flex-initial inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3.5 text-xs font-bold text-white transition-colors hover:bg-blue-500 whitespace-nowrap"
+                    >
+                      <LogIn className="h-3.5 w-3.5" aria-hidden="true" />
+                      Entrar com Synapse
+                    </motion.button>
+                    {onOpenSynapseAuth && (
+                      <button
+                        type="button"
+                        onClick={onOpenSynapseAuth}
+                        className="flex-1 sm:flex-initial inline-flex min-h-[40px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.09] whitespace-nowrap"
+                      >
+                        E-mail / Cadastro
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </motion.section>

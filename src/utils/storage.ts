@@ -3,10 +3,15 @@ import { AppSettings, CareerProfile, DEFAULT_APP_SETTINGS } from '../types/caree
 const STORAGE_KEY = 'modo_carreira_saves_v1';
 const ACTIVE_ID_KEY = 'modo_carreira_active_id_v1';
 const SETTINGS_KEY = 'modo_carreira_settings_v1';
+const LEGACY_MIGRATED_KEY = 'modo_carreira_legacy_migrated_v1';
 
 export interface StoredWorkspace {
   careers: CareerProfile[];
   activeCareerId: string | null;
+}
+
+function getAccountScopeKey(accountId: string): string {
+  return encodeURIComponent(accountId.trim().toLowerCase());
 }
 
 export function loadAppSettings(): AppSettings {
@@ -78,6 +83,81 @@ export function saveWorkspace(careers: CareerProfile[], activeCareerId: string |
       localStorage.setItem(ACTIVE_ID_KEY, activeCareerId);
     } else {
       localStorage.removeItem(ACTIVE_ID_KEY);
+    }
+  } catch {
+    // Ignore storage quota issues safely
+  }
+}
+
+export function loadAccountWorkspace(accountId: string | null): StoredWorkspace {
+  if (!accountId || !accountId.trim()) {
+    return { careers: [], activeCareerId: null };
+  }
+
+  const scope = getAccountScopeKey(accountId);
+  const scopedSavesKey = `${STORAGE_KEY}_acc_${scope}`;
+  const scopedActiveKey = `${ACTIVE_ID_KEY}_acc_${scope}`;
+
+  try {
+    const raw = localStorage.getItem(scopedSavesKey);
+    const activeRaw = localStorage.getItem(scopedActiveKey);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw) as CareerProfile[];
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((c) => c.id !== 'endrick-milan-demo');
+        const validActive =
+          cleaned.length > 0
+            ? activeRaw && cleaned.some((c) => c.id === activeRaw)
+              ? activeRaw
+              : cleaned[0].id
+            : null;
+        return {
+          careers: cleaned,
+          activeCareerId: validActive,
+        };
+      }
+    }
+
+    // One-time migration of pre-login local careers to the first authenticated account
+    const alreadyMigrated = localStorage.getItem(LEGACY_MIGRATED_KEY);
+    if (!alreadyMigrated) {
+      const legacy = loadWorkspace();
+      if (legacy.careers.length > 0) {
+        localStorage.setItem(scopedSavesKey, JSON.stringify(legacy.careers));
+        if (legacy.activeCareerId) {
+          localStorage.setItem(scopedActiveKey, legacy.activeCareerId);
+        }
+        localStorage.setItem(LEGACY_MIGRATED_KEY, scope);
+        return legacy;
+      }
+    }
+  } catch {
+    // Fallback cleanly to empty workspace
+  }
+
+  return {
+    careers: [],
+    activeCareerId: null,
+  };
+}
+
+export function saveAccountWorkspace(
+  accountId: string | null,
+  careers: CareerProfile[],
+  activeCareerId: string | null
+): void {
+  if (!accountId || !accountId.trim()) return;
+
+  const scope = getAccountScopeKey(accountId);
+  const scopedSavesKey = `${STORAGE_KEY}_acc_${scope}`;
+  const scopedActiveKey = `${ACTIVE_ID_KEY}_acc_${scope}`;
+
+  try {
+    localStorage.setItem(scopedSavesKey, JSON.stringify(careers));
+    if (activeCareerId) {
+      localStorage.setItem(scopedActiveKey, activeCareerId);
+    } else {
+      localStorage.removeItem(scopedActiveKey);
     }
   } catch {
     // Ignore storage quota issues safely
